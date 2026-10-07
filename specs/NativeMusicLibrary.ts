@@ -11,7 +11,7 @@ export type AudioFile = {
 };
 
 export interface Spec extends TurboModule {
-  scan(): Promise<AudioFile[]>;
+  scan(includeRecordings: boolean): Promise<AudioFile[]>;
   importFiles(): Promise<AudioFile[]>;
 }
 

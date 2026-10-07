@@ -7,24 +7,36 @@ export function TextButton({
   label,
   onPress,
   disabled = false,
+  primary = false,
+  accessibilityLabel,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  primary?: boolean;
+  accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        primary && styles.primaryButton,
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
     >
-      <Text style={styles.buttonText}>{label}</Text>
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        style={[styles.buttonText, primary && styles.primaryText]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -45,11 +57,23 @@ export function Artwork({
         { backgroundColor: track.color },
       ]}
     >
-      <Text style={[styles.artLetter, large && styles.largeLetter]}>
-        {track.album.charAt(0).toLowerCase()}
+      {large && (
+        <View style={styles.disc}>
+          <View style={styles.innerDisc}>
+            <View style={styles.spindle} />
+          </View>
+        </View>
+      )}
+      <Text
+        numberOfLines={1}
+        style={[styles.artLetter, large && styles.largeLetter]}
+      >
+        {track.title.charAt(0).toLowerCase()}
       </Text>
       {large && (
-        <Text style={styles.artCaption}>{track.album.toUpperCase()}</Text>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.artCaption}>
+          {track.album.toUpperCase()}
+        </Text>
       )}
     </View>
   );
@@ -67,19 +91,23 @@ export function TrackRow({
   onAdd?: () => void;
 }) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, selected && styles.selectedRow]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`View ${track.title} by ${track.artist}`}
+        accessibilityLabel={`Play ${track.title} by ${track.artist}`}
         onPress={onPress}
         style={({ pressed }) => [styles.track, pressed && styles.pressed]}
       >
         <Artwork track={track} />
         <View style={styles.metadata}>
-          <Text style={[styles.title, selected && styles.selected]}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[styles.title, selected && styles.selected]}
+          >
             {track.title}
           </Text>
-          <Text style={styles.subtitle}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.subtitle}>
             {track.artist} · {formatDuration(track.duration)}
           </Text>
         </View>
@@ -99,17 +127,26 @@ export function TrackRow({
 }
 
 const styles = StyleSheet.create({
+  primaryButton: {
+    backgroundColor: theme.colors.accent,
+    borderColor: theme.colors.accent,
+  },
+  primaryText: { color: '#00171F', fontWeight: '600' },
   button: {
+    flexShrink: 1,
+    backgroundColor: '#101B20',
+    borderRadius: 4,
     minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: theme.colors.secondary,
+    borderColor: '#29414A',
   },
-  buttonText: { color: theme.colors.foreground, fontSize: 16 },
+  buttonText: { color: theme.colors.accent, fontSize: 14 },
   pressed: { opacity: 0.6 },
   disabled: { opacity: 0.35 },
   art: {
+    overflow: 'hidden',
     width: 56,
     height: 56,
     alignItems: 'center',
@@ -117,23 +154,67 @@ const styles = StyleSheet.create({
   },
   largeArt: {
     width: '100%',
+    maxWidth: 320,
+    alignSelf: 'center',
     height: undefined,
     aspectRatio: 1,
-    marginVertical: 20,
+    marginTop: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#338098',
   },
   artLetter: { color: '#FFFFFF', fontSize: 38, fontFamily: theme.lightFont },
-  largeLetter: { fontSize: 150 },
+  largeLetter: { fontSize: 62, color: '#FFFFFF', opacity: 0.85 },
+  disc: {
+    position: 'absolute',
+    width: '84%',
+    height: '84%',
+    borderRadius: 1000,
+    borderWidth: 1,
+    borderColor: '#438497',
+    backgroundColor: '#09242F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateX: 36 }, { translateY: -16 }],
+  },
+  innerDisc: {
+    width: '74%',
+    height: '74%',
+    borderRadius: 1000,
+    borderWidth: 18,
+    borderColor: '#103540',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spindle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1,
+    borderColor: '#338098',
+  },
   artCaption: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    bottom: 4,
     color: '#FFFFFF',
     fontSize: 13,
     letterSpacing: 3,
     marginBottom: 20,
   },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#162126',
+  },
+  selectedRow: { backgroundColor: '#071C23' },
   track: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  metadata: { flex: 1, marginLeft: 14 },
+  metadata: { flex: 1, minWidth: 0, marginLeft: 14 },
   title: {
-    fontSize: 21,
+    fontSize: 18,
     color: theme.colors.foreground,
     fontFamily: theme.lightFont,
   },

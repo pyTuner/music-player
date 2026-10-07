@@ -53,17 +53,22 @@ class MusicLibraryModule(private val context: ReactApplicationContext) : NativeM
   override fun getName() = "NativeMusicLibrary"
   private fun importDirectory() = File(context.filesDir, "audio").apply { mkdirs() }
 
-  override fun scan(promise: Promise) {
+  override fun scan(includeRecordings: Boolean, promise: Promise) {
     worker.execute {
       try {
         val result = Arguments.createArray()
         val permission = if (android.os.Build.VERSION.SDK_INT >= 33) "android.permission.READ_MEDIA_AUDIO" else "android.permission.READ_EXTERNAL_STORAGE"
         if (context.checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
           val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-          val columns = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.DURATION)
-          // Do not filter IS_MUSIC: recordings, podcasts, and other audio belong in this library too.
-          context.contentResolver.query(collection, columns, null, null, "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->
+          val pathColumn = if (android.os.Build.VERSION.SDK_INT >= 29) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA
+          val columns = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.DURATION, pathColumn, MediaStore.Audio.Media.DISPLAY_NAME)
+          val selection = if (includeRecordings) null else buildString {
+            append("${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.IS_RINGTONE} = 0 AND ${MediaStore.Audio.Media.IS_NOTIFICATION} = 0 AND ${MediaStore.Audio.Media.IS_ALARM} = 0")
+            if (android.os.Build.VERSION.SDK_INT >= 31) append(" AND ${MediaStore.Audio.Media.IS_RECORDING} = 0")
+          }
+          context.contentResolver.query(collection, columns, selection, null, "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->
             while (cursor.moveToNext()) {
+              if (!includeRecordings && RecordingFilter.isRecording(cursor.getString(5), cursor.getString(6))) continue
               val uri = ContentUris.withAppendedId(collection, cursor.getLong(0)).toString()
               result.pushMap(Arguments.createMap().apply {
                 putString("id", uri); putString("uri", uri)

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLibraryStore } from '../../store/libraryStore';
 import { usePlayerStore } from '../../store/playerStore';
-import { TextButton, TrackRow } from '../../components/MusicElements';
+import { Artwork, TextButton, TrackRow } from '../../components/MusicElements';
 import { styles } from '../../theme/styles';
 import { theme } from '../../theme/theme';
 import type { ScreenProps } from '../../app/navigation';
@@ -27,6 +27,15 @@ export default function LibraryScreen({
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const currentId = usePlayerStore(state => state.status.trackId);
+  const playerBusy = usePlayerStore(state => state.busy);
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+    const timer = setTimeout(() => setNotice(''), 2400);
+    return () => clearTimeout(timer);
+  }, [notice]);
   const tracks = library.tracks.filter(track => {
     const matches = `${track.title} ${track.artist} ${track.album}`
       .toLowerCase()
@@ -56,8 +65,24 @@ export default function LibraryScreen({
         <Text style={styles.eyebrow}>
           ON YOUR DEVICE / {library.tracks.length} TRACKS
         </Text>
-        <Text style={styles.title}>your rotation</Text>
+        <Text style={styles.title}>
+          your rotation<Text style={styles.active}>.</Text>
+        </Text>
+        <Text style={styles.muted}>
+          {library.includeRecordings
+            ? 'All your audio, in one place.'
+            : 'Less noise. More music.'}
+        </Text>
         <View style={styles.row}>
+          <TextButton
+            primary
+            label="▶ play all"
+            disabled={!tracks.length || playerBusy}
+            onPress={() => {
+              usePlayerStore.getState().start(tracks[0], tracks);
+              navigation.navigate('Player');
+            }}
+          />
           <TextButton
             label="import audio"
             disabled={library.busy}
@@ -119,7 +144,10 @@ export default function LibraryScreen({
                 setCategory(item);
                 setGroup(null);
               }}
-              style={styles.tab}
+              style={({ pressed }) => [
+                styles.tab,
+                pressed && styles.touchFeedback,
+              ]}
             >
               <Text
                 style={[styles.tabText, category === item && styles.active]}
@@ -147,15 +175,51 @@ export default function LibraryScreen({
       {grouped ? (
         <FlatList
           data={groups}
+          refreshing={library.busy}
+          onRefresh={() => library.scan()}
           keyExtractor={item => item}
           contentContainerStyle={styles.content}
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
               onPress={() => setGroup(item)}
-              style={styles.group}
+              style={({ pressed }) => [
+                styles.group,
+                styles.groupRow,
+                pressed && styles.touchFeedback,
+              ]}
             >
-              <Text style={styles.heading}>{item}</Text>
+              <Artwork
+                track={
+                  tracks.find(
+                    track =>
+                      (category === 'albums'
+                        ? `${track.album} · ${track.artist}`
+                        : track.artist) === item,
+                  )!
+                }
+              />
+              <View style={styles.flex}>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={styles.text}
+                >
+                  {item}
+                </Text>
+                <Text style={styles.muted}>
+                  {
+                    tracks.filter(
+                      track =>
+                        (category === 'albums'
+                          ? `${track.album} · ${track.artist}`
+                          : track.artist) === item,
+                    ).length
+                  }{' '}
+                  songs
+                </Text>
+              </View>
+              <Text style={styles.accent}>›</Text>
             </Pressable>
           )}
           ListEmptyComponent={<Empty query={query} />}
@@ -163,11 +227,14 @@ export default function LibraryScreen({
       ) : (
         <FlatList
           data={tracks}
+          refreshing={library.busy}
+          onRefresh={() => library.scan()}
           keyExtractor={track => track.id}
           contentContainerStyle={styles.content}
           renderItem={({ item }) => (
             <TrackRow
               track={item}
+              selected={item.id === currentId}
               onPress={() => {
                 usePlayerStore.getState().start(item, tracks);
                 navigation.navigate('Player');

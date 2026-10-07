@@ -1,4 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import MarqueeTitle from '../components/MarqueeTitle';
+import { Artwork } from '../components/MusicElements';
+import TransportButton from '../components/TransportButton';
 import { AppState, Pressable, Text, View } from 'react-native';
 import {
   DarkTheme,
@@ -41,6 +44,7 @@ function SettingsButton() {
   );
 }
 export default function MusicApp() {
+  const [currentRoute, setCurrentRoute] = useState('Collection');
   useEffect(() => {
     useLibraryStore.getState().initialize();
     usePlayerStore.getState().restore();
@@ -62,7 +66,13 @@ export default function MusicApp() {
     };
   }, []);
   return (
-    <NavigationContainer ref={navigation} theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigation}
+      theme={navigationTheme}
+      onStateChange={() =>
+        setCurrentRoute(navigation.getCurrentRoute()?.name ?? 'Collection')
+      }
+    >
       <View style={styles.root}>
         <Stack.Navigator
           screenOptions={{
@@ -94,7 +104,7 @@ export default function MusicApp() {
             options={{ title: 'SETTINGS' }}
           />
         </Stack.Navigator>
-        <MiniPlayer />
+        {currentRoute !== 'Player' && <MiniPlayer />}
       </View>
     </NavigationContainer>
   );
@@ -106,32 +116,26 @@ function MiniPlayer() {
     <SafeAreaView edges={['bottom']}>
       {track && (
         <View style={styles.mini}>
+          <Artwork track={track} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Open ${track.title}`}
             style={styles.flex}
             onPress={() => navigation.navigate('Player')}
           >
-            <Text style={styles.accent} numberOfLines={1}>
-              {track.title}
-            </Text>
+            <MarqueeTitle key={track.id} title={track.title} />
             <Text style={styles.muted} numberOfLines={1}>
               {track.artist}
             </Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={player.status.playing ? 'Pause' : 'Play'}
-            style={styles.transport}
+          <TransportButton
+            kind={player.status.playing ? 'pause' : 'play'}
+            label={player.status.playing ? 'Pause' : 'Play'}
             disabled={player.busy}
             onPress={() =>
               player.command(player.status.playing ? 'pause' : 'play')
             }
-          >
-            <Text style={styles.accent}>
-              {player.status.playing ? 'Ⅱ' : '▷'}
-            </Text>
-          </Pressable>
+          />
         </View>
       )}
     </SafeAreaView>

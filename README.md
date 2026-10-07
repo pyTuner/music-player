@@ -7,6 +7,8 @@ See [Project direction](./PROJECT_DIRECTION.md) for the reviewed architecture, i
 This is the existing MusicPlayer application, with a Lumia-inspired local music library and native playback. See [Architecture and gap audit](./ARCHITECTURE.md) for implementation details and outstanding features from the shared conversation.
 
 - Android automatically discovers indexed device audio after permission is granted; both platforms have native audio file import.
+- Automatic scans now hide recordings and system sounds by default. Enable **include recordings** in settings to see all indexed audio; manually imported files stay visible.
+- Now Playing supports dragging/tapping the seek bar, larger transport controls, favorites, and an up-next preview. Long row titles truncate, player titles have a two-line limit, and the mini-player scrolls overflowing names (respecting Reduce Motion).
 - iOS automatically reloads audio previously imported into the app. It cannot scan other apps' private storage.
 - Songs, albums, artists, favorites, queue, now playing, and settings use real metadata. No fictional catalog is loaded.
 - Zustand owns runtime state, SQLite persists metadata/favorites/queue, and React Navigation owns navigation.

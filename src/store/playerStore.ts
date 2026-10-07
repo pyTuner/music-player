@@ -119,11 +119,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
   async seek(seconds) {
+    if (get().busy || !Number.isFinite(seconds)) {
+      return;
+    }
+    set({ busy: true, error: '' });
     try {
-      await getAudioEngine().seek(Math.max(0, seconds));
+      const duration = get().status.duration;
+      await getAudioEngine().seek(
+        Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds),
+      );
       await get().refresh();
     } catch (error) {
       set({ error: String(error) });
+    } finally {
+      set({ busy: false });
     }
   },
   async refresh() {

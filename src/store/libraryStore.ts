@@ -13,6 +13,8 @@ type LibraryState = {
   favorites: string[];
   busy: boolean;
   error: string;
+  includeRecordings: boolean;
+  setIncludeRecordings(value: boolean): Promise<void>;
   permission: 'unknown' | 'granted' | 'denied' | 'blocked';
   initialize(): Promise<void>;
   scan(request?: boolean): Promise<void>;
@@ -25,6 +27,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   favorites: [],
   busy: false,
   error: '',
+  includeRecordings: false,
   permission: 'unknown',
   async initialize() {
     if (initialized) {
@@ -32,12 +35,20 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
     initialized = true;
     try {
-      const [tracks, favorites] = await Promise.all([
-        loadTracks(),
-        readPreference<string[]>('favorites', []),
-      ]);
+      const [tracks, favorites, includeRecordings, cacheMode] =
+        await Promise.all([
+          loadTracks(),
+          readPreference<string[]>('favorites', []),
+          readPreference<boolean>('includeRecordings', false),
+          readPreference<string>('libraryFilterMode', ''),
+        ]);
       set({
-        tracks,
+        // Do not briefly flash the pre-filter library from older app versions.
+        tracks:
+          cacheMode === (includeRecordings === true ? 'all-v1' : 'music-v1')
+            ? tracks
+            : [],
+        includeRecordings: includeRecordings === true,
         favorites: Array.isArray(favorites)
           ? favorites.filter(id => typeof id === 'string')
           : [],
@@ -54,13 +65,18 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
     set({ busy: true, error: '' });
     try {
-      const result = await discoverAudio(request);
+      const result = await discoverAudio(request, get().includeRecordings);
       const tracks = result.tracks.sort((a, b) =>
         a.title.localeCompare(b.title),
       );
       // Permission denial hides inaccessible shared files but does not overwrite their persisted cache.
       if (result.granted) {
+        await writePreference('libraryFilterMode', '');
         await saveTracks(tracks);
+        await writePreference(
+          'libraryFilterMode',
+          get().includeRecordings ? 'all-v1' : 'music-v1',
+        );
       }
       set({
         tracks,
@@ -86,6 +102,22 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     } catch (error) {
       set({ error: String(error) });
       set({ busy: false });
+      return;
+    }
+    set({ busy: false });
+    await get().scan();
+  },
+  async setIncludeRecordings(value) {
+    if (get().busy) {
+      return;
+    }
+    const previous = get().includeRecordings;
+    set({ busy: true, error: '' });
+    try {
+      await writePreference('includeRecordings', value);
+      set({ includeRecordings: value, tracks: [] });
+    } catch (error) {
+      set({ includeRecordings: previous, error: String(error), busy: false });
       return;
     }
     set({ busy: false });

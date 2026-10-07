@@ -35,7 +35,7 @@ RCT_EXPORT_MODULE(NativeMusicLibrary)
   return @{@"id": [@"import:" stringByAppendingString:name], @"uri":url.absoluteString,
     @"title":title, @"artist":artist, @"album":album, @"duration":@(isfinite(duration) ? MAX(0, duration) : 0)};
 }
-- (void)scan:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
+- (void)scan:(BOOL)includeRecordings resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject {
   dispatch_async(_worker, ^{
     NSError *error;
     NSArray<NSURL *> *files = [NSFileManager.defaultManager contentsOfDirectoryAtURL:[self directory] includingPropertiesForKeys:nil options:NSDirectoryEnumerationSkipsHiddenFiles error:&error];

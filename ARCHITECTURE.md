@@ -25,7 +25,7 @@ SQLite stores a normalized track table and small JSON preferences for favorites 
 
 ## Discovery behavior
 
-- Android requests `READ_MEDIA_AUDIO` on API 33+, or `READ_EXTERNAL_STORAGE` on earlier supported versions. It scans all externally indexed audio, without an MP3-only or `IS_MUSIC` filter. The scan runs on a native worker at launch, on return to the app, and on manual rescan. Files outside MediaStore can be selected through the audio document picker. Private data of other apps is inaccessible.
+- Android requests `READ_MEDIA_AUDIO` on API 33+, or `READ_EXTERNAL_STORAGE` on earlier supported versions. Automatic discovery defaults to music: `IS_MUSIC`, recording flags (API 31+), and ringtone/notification/alarm flags plus conservative recorder-folder and filename checks hide recordings. Settings → include recordings restores all indexed audio if a legitimate song is misclassified. No files are deleted. Explicit imports always remain visible. Filtering is heuristic because recorder apps may label their files incorrectly. The native worker scans at launch, on return to the app, and on manual/pull-to-refresh scans. Private data of other apps is inaccessible.
 - iOS imports audio through Files and rediscovers the app's audio directory on launch/foreground. Arbitrary filesystem scanning is not available. Apple Music-library access is not implemented; protected subscription audio is not a local DSP source.
 - File support depends on platform decoders. Invalid/corrupt files can fail metadata extraction or playback. Partial multi-file imports may leave successfully copied files in the library; rescan recovers them.
 - Imported audio is owned by the app. Uninstalling removes that audio and the local database. Rescanning does not delete source files.
@@ -64,6 +64,8 @@ Sources: [Android shared media](https://developer.android.com/training/data-stor
 6. Test permissions, SD-card removal, unsupported files, app restarts, calls, headphones, background playback, and queue completion on actual devices. Build success does not prove audio behavior.
 
 ## Verification
+
+The player UI now has drag/tap seeking with release-only native commands, screen-reader adjustments, one-line row titles, two-line player titles, and overflow-only mini-player marquee text. The marquee respects Reduce Motion and pauses in the background. Native timing and transition capabilities are unchanged.
 
 - TypeScript and ESLint checks.
 - Store tests: granted/denied discovery, failed scan retention, import refresh, favorites persistence, queue commands, seek preservation, and native failure reporting.

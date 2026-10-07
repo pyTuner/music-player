@@ -39,7 +39,8 @@ export default function QueueScreen({ navigation }: ScreenProps<'Queue'>) {
             />
             <View style={styles.row}>
               <TextButton
-                label={`remove ${item.title}`}
+                label="remove"
+                accessibilityLabel={`Remove ${item.title} from queue`}
                 disabled={player.busy}
                 onPress={() =>
                   player.changeQueue(

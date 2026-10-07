@@ -2,7 +2,10 @@ import { PermissionsAndroid, Platform } from 'react-native';
 import NativeLibrary from '../../../specs/NativeMusicLibrary';
 import { toTrack } from '../../types/Track';
 
-export async function discoverAudio(requestPermission = false) {
+export async function discoverAudio(
+  requestPermission = false,
+  includeRecordings = false,
+) {
   if (!NativeLibrary) {
     throw new Error(
       'Music library module is unavailable. Rebuild the native app.',
@@ -23,7 +26,7 @@ export async function discoverAudio(requestPermission = false) {
     }
   }
   return {
-    tracks: (await NativeLibrary.scan()).map(toTrack),
+    tracks: (await NativeLibrary.scan(includeRecordings)).map(toTrack),
     granted,
     blocked,
   };

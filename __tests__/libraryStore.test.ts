@@ -33,6 +33,7 @@ beforeEach(() => {
     busy: false,
     error: '',
     permission: 'unknown',
+    includeRecordings: false,
   });
 });
 test('successful discovery persists real metadata', async () => {
@@ -40,7 +41,7 @@ test('successful discovery persists real metadata', async () => {
     .mocked(discoverAudio)
     .mockResolvedValue({ tracks: [track], granted: true, blocked: false });
   await useLibraryStore.getState().scan(true);
-  expect(discoverAudio).toHaveBeenCalledWith(true);
+  expect(discoverAudio).toHaveBeenCalledWith(true, false);
   expect(saveTracks).toHaveBeenCalledWith([track]);
   expect(useLibraryStore.getState().tracks).toEqual([track]);
 });
@@ -74,4 +75,23 @@ test('favorites are persisted and can be removed', async () => {
   expect(writePreference).toHaveBeenLastCalledWith('favorites', [track.id]);
   await useLibraryStore.getState().toggleFavorite(track.id);
   expect(writePreference).toHaveBeenLastCalledWith('favorites', []);
+});
+
+test('recording preference is saved and triggers a fresh inclusive scan', async () => {
+  jest
+    .mocked(discoverAudio)
+    .mockResolvedValue({ tracks: [track], granted: true, blocked: false });
+  await useLibraryStore.getState().setIncludeRecordings(true);
+  expect(writePreference).toHaveBeenCalledWith('includeRecordings', true);
+  expect(discoverAudio).toHaveBeenCalledWith(false, true);
+  expect(useLibraryStore.getState().includeRecordings).toBe(true);
+});
+
+test('failed preference writes leave the library and filter unchanged', async () => {
+  useLibraryStore.setState({ tracks: [track] });
+  jest.mocked(writePreference).mockRejectedValue(new Error('Storage full'));
+  await useLibraryStore.getState().setIncludeRecordings(true);
+  expect(useLibraryStore.getState().includeRecordings).toBe(false);
+  expect(useLibraryStore.getState().tracks).toEqual([track]);
+  expect(discoverAudio).not.toHaveBeenCalled();
 });

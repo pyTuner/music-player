@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Switch, Text, View } from 'react-native';
 import { TextButton } from '../../components/MusicElements';
 import { useLibraryStore } from '../../store/libraryStore';
 import { styles } from '../../theme/styles';
@@ -15,6 +15,25 @@ export default function SettingsScreen() {
         its own identity.
       </Text>
       <Text style={styles.heading}>local library</Text>
+      {Platform.OS === 'android' && (
+        <View style={styles.row}>
+          <View style={styles.flex}>
+            <Text style={styles.text}>include recordings</Text>
+            <Text style={styles.muted}>
+              Off by default. Show all device audio if a song is missing. Files
+              you explicitly import are always included.
+            </Text>
+          </View>
+          <Switch
+            accessibilityLabel="Include recordings"
+            disabled={library.busy}
+            value={library.includeRecordings}
+            onValueChange={library.setIncludeRecordings}
+            trackColor={{ false: '#333333', true: '#007E9F' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+      )}
       <Text style={styles.muted}>
         {Platform.OS === 'android'
           ? 'Audio indexed by Android loads automatically with permission. Import from Files for audio in other locations.'

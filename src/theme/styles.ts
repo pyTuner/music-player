@@ -2,6 +2,8 @@ import { StyleSheet } from 'react-native';
 import { theme } from './theme';
 
 export const styles = StyleSheet.create({
+  touchFeedback: { opacity: 0.65, backgroundColor: '#0B232C' },
+  groupRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
   root: { flex: 1, backgroundColor: theme.colors.background },
   content: { paddingHorizontal: 24, paddingBottom: 24 },
   title: {
@@ -41,6 +43,9 @@ export const styles = StyleSheet.create({
   },
   active: { color: theme.colors.accent },
   search: {
+    backgroundColor: '#101719',
+    paddingHorizontal: 14,
+    borderRadius: 4,
     color: theme.colors.foreground,
     fontSize: 18,
     borderBottomWidth: 1,
@@ -67,14 +72,15 @@ export const styles = StyleSheet.create({
   },
   progressFill: { height: 4, backgroundColor: theme.colors.accent },
   mini: {
+    backgroundColor: '#0A161C',
     borderTopWidth: 1,
     borderColor: theme.colors.divider,
-    padding: 16,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-  flex: { flex: 1 },
+  flex: { flex: 1, minWidth: 0 },
   transport: {
     minWidth: 48,
     minHeight: 48,
