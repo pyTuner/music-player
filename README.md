@@ -1,5 +1,22 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+See [Project direction](./PROJECT_DIRECTION.md) for the reviewed architecture, implementation milestones, and strict Windows Lumia music player theme requirement.
+
+## Implementation status
+
+This is the existing MusicPlayer application, with a Lumia-inspired local music library and native playback. See [Architecture and gap audit](./ARCHITECTURE.md) for implementation details and outstanding features from the shared conversation.
+
+- Android automatically discovers indexed device audio after permission is granted; both platforms have native audio file import.
+- iOS automatically reloads audio previously imported into the app. It cannot scan other apps' private storage.
+- Songs, albums, artists, favorites, queue, now playing, and settings use real metadata. No fictional catalog is loaded.
+- Zustand owns runtime state, SQLite persists metadata/favorites/queue, and React Navigation owns navigation.
+- Native playback supports play/pause, seek, previous/next, and queue advancement. Android includes a Media3 playback service.
+- Waveform/BPM analysis, two-deck transitions, bass swapping, and the Transition Lab remain outstanding, as listed in the architecture audit.
+
+After `npm install`, rebuild the native app: JavaScript hot reload alone cannot register the new modules. For iOS run `bundle exec pod install` in `ios` with the Ruby/Bundler versions required by the lockfile. Use Xcode as the active developer directory, or set `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` for build commands.
+
+Validation commands: `npm test -- --runInBand`, `npm run lint`, `npm exec -- tsc --noEmit`, and `cd android && ./gradlew :app:assembleDebug` with JDK 17 and the Android SDK configured.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

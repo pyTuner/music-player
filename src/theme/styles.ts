@@ -1,0 +1,84 @@
+import { StyleSheet } from 'react-native';
+import { theme } from './theme';
+
+export const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.colors.background },
+  content: { paddingHorizontal: 24, paddingBottom: 24 },
+  title: {
+    fontFamily: theme.lightFont,
+    fontSize: 46,
+    color: theme.colors.foreground,
+    marginBottom: 16,
+  },
+  heading: {
+    fontFamily: theme.lightFont,
+    fontSize: 28,
+    color: theme.colors.foreground,
+    marginVertical: 16,
+  },
+  text: { color: theme.colors.foreground, fontSize: 17 },
+  muted: { color: theme.colors.secondary, fontSize: 14, lineHeight: 21 },
+  accent: { color: theme.colors.accent, fontSize: 16 },
+  eyebrow: {
+    color: theme.colors.accent,
+    fontSize: 11,
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 12,
+  },
+  tabs: { flexGrow: 0, flexShrink: 0, marginVertical: 8 },
+  tab: { minHeight: 48, justifyContent: 'center', marginRight: 24 },
+  tabText: {
+    fontSize: 28,
+    fontFamily: theme.lightFont,
+    color: theme.colors.secondary,
+  },
+  active: { color: theme.colors.accent },
+  search: {
+    color: theme.colors.foreground,
+    fontSize: 18,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.divider,
+    minHeight: 48,
+    marginBottom: 16,
+  },
+  error: { color: '#FFBCAB', fontSize: 14, lineHeight: 21, marginVertical: 12 },
+  group: {
+    borderBottomWidth: 1,
+    borderColor: theme.colors.divider,
+    paddingVertical: 18,
+  },
+  empty: { paddingVertical: 32 },
+  trackTitle: {
+    fontSize: 34,
+    color: theme.colors.foreground,
+    fontFamily: theme.lightFont,
+  },
+  progress: {
+    height: 4,
+    backgroundColor: theme.colors.divider,
+    marginVertical: 16,
+  },
+  progressFill: { height: 4, backgroundColor: theme.colors.accent },
+  mini: {
+    borderTopWidth: 1,
+    borderColor: theme.colors.divider,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  flex: { flex: 1 },
+  transport: {
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
