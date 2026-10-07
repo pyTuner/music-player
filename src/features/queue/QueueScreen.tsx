@@ -10,9 +10,8 @@ export default function QueueScreen({ navigation }: ScreenProps<'Queue'>) {
   return (
     <View style={styles.root}>
       <View style={styles.content}>
-        <Text style={styles.title}>up next</Text>
         <Text style={styles.muted}>
-          The native player advances through your queue automatically.
+          Keep your next listens close.
         </Text>
         <View style={styles.row}>
           <TextButton

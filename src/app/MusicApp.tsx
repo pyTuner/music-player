@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import MarqueeTitle from '../components/MarqueeTitle';
-import { Artwork } from '../components/MusicElements';
-import TransportButton from '../components/TransportButton';
-import { AppState, Pressable, Text, View } from 'react-native';
+import { MetroHeader, useReducedMotion } from '../components/MetroMotion';
+import MiniPlayer from '../components/MiniPlayer';
+import { AppState, View } from 'react-native';
 import {
   DarkTheme,
   NavigationContainer,
@@ -31,19 +30,8 @@ const navigationTheme = {
     primary: theme.colors.accent,
   },
 };
-function SettingsButton() {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Open settings"
-      style={styles.transport}
-      onPress={() => navigation.navigate('Settings')}
-    >
-      <Text style={styles.accent}>···</Text>
-    </Pressable>
-  );
-}
 export default function MusicApp() {
+  const reducedMotion = useReducedMotion();
   const [currentRoute, setCurrentRoute] = useState('Collection');
   useEffect(() => {
     useLibraryStore.getState().initialize();
@@ -79,65 +67,37 @@ export default function MusicApp() {
             headerShadowVisible: false,
             headerTintColor: '#FFFFFF',
             headerStyle: { backgroundColor: '#000000' },
-            headerRight: SettingsButton,
-            animation: 'slide_from_right',
+            header: MetroHeader,
+            animation: reducedMotion ? 'none' : 'slide_from_right',
           }}
         >
           <Stack.Screen
             name="Collection"
             component={LibraryScreen}
-            options={{ title: 'MUSIC / COLLECTION' }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="Player"
             component={PlayerScreen}
-            options={{ title: 'NOW PLAYING' }}
+            options={{ title: 'now playing' }}
           />
           <Stack.Screen
             name="Queue"
             component={QueueScreen}
-            options={{ title: 'YOUR QUEUE' }}
+            options={{ title: 'up next' }}
           />
           <Stack.Screen
             name="Settings"
             component={SettingsScreen}
-            options={{ title: 'SETTINGS' }}
+            options={{ title: 'settings' }}
           />
         </Stack.Navigator>
-        {currentRoute !== 'Player' && <MiniPlayer />}
+        {currentRoute !== 'Player' && currentRoute !== 'Collection' && (
+          <SafeAreaView edges={['bottom']}>
+            <MiniPlayer onOpen={() => navigation.navigate('Player')} />
+          </SafeAreaView>
+        )}
       </View>
     </NavigationContainer>
-  );
-}
-function MiniPlayer() {
-  const player = usePlayerStore();
-  const track = player.queue.find(item => item.id === player.status.trackId);
-  return (
-    <SafeAreaView edges={['bottom']}>
-      {track && (
-        <View style={styles.mini}>
-          <Artwork track={track} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${track.title}`}
-            style={styles.flex}
-            onPress={() => navigation.navigate('Player')}
-          >
-            <MarqueeTitle key={track.id} title={track.title} />
-            <Text style={styles.muted} numberOfLines={1}>
-              {track.artist}
-            </Text>
-          </Pressable>
-          <TransportButton
-            kind={player.status.playing ? 'pause' : 'play'}
-            label={player.status.playing ? 'Pause' : 'Play'}
-            disabled={player.busy}
-            onPress={() =>
-              player.command(player.status.playing ? 'pause' : 'play')
-            }
-          />
-        </View>
-      )}
-    </SafeAreaView>
   );
 }

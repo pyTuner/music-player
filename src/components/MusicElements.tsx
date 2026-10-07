@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   track: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   metadata: { flex: 1, minWidth: 0, marginLeft: 14 },
   title: {
-    fontSize: 18,
+    fontSize: 22,
     color: theme.colors.foreground,
     fontFamily: theme.lightFont,
   },

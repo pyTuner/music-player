@@ -8,7 +8,6 @@ export default function SettingsScreen() {
   const library = useLibraryStore();
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>your preferences</Text>
       <Text style={styles.heading}>Lumia, in spirit</Text>
       <Text style={styles.muted}>
         Clear type, a black canvas, and electric cyan. A listening space with
