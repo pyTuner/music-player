@@ -87,12 +87,22 @@ export default function MusicApp() {
           <Stack.Screen
             name="Player"
             component={PlayerScreen}
-            options={{ title: 'now playing' }}
+            options={{
+              title: 'now playing',
+              headerShown: false,
+              presentation: 'transparentModal',
+              animation: reducedMotion ? 'none' : 'slide_from_bottom',
+              contentStyle: { backgroundColor: 'transparent' },
+            }}
           />
           <Stack.Screen
             name="Queue"
             component={QueueScreen}
-            options={{ title: 'up next' }}
+            options={{
+              title: 'up next',
+              headerShown: false,
+              animation: reducedMotion ? 'none' : 'slide_from_right',
+            }}
           />
           <Stack.Screen
             name="Settings"

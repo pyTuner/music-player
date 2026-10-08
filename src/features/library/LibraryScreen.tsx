@@ -45,6 +45,8 @@ export default function LibraryScreen({
   const tileSize = Math.max(80, (width - 60) / 2);
   const reduced = useReducedMotion();
   const pager = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const gridOpacity = useRef(new Animated.Value(1)).current;
+  const [changingView, setChangingView] = useState(false);
   const scrollX = useRef(new Animated.Value(0)).current;
   const [index, setIndex] = useState(0);
   const selectedIndex = useRef(index);
@@ -135,6 +137,34 @@ export default function LibraryScreen({
             ? `${track.album} · ${track.artist}`
             : track.artist) === group),
     );
+  const changeView = () => {
+    if (changingView || preferences.busy) {
+      return;
+    }
+    if (reduced) {
+      preferences.update({ songGrid: !preferences.songGrid });
+      return;
+    }
+    setChangingView(true);
+    Animated.timing(gridOpacity, {
+      toValue: 0,
+      duration: 80,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) {
+        setChangingView(false);
+        return;
+      }
+      preferences.update({ songGrid: !preferences.songGrid }).finally(() => {
+        Animated.timing(gridOpacity, {
+          toValue: 1,
+          duration: 160,
+          useNativeDriver: true,
+        }).start(() => setChangingView(false));
+      });
+    });
+  };
+  useEffect(() => () => gridOpacity.stopAnimation(), [gridOpacity]);
   const choosePage = (next: number) => {
     pager.current?.scrollTo({ x: next * width, animated: !reduced });
     if (reduced) {
@@ -348,17 +378,15 @@ export default function LibraryScreen({
           </Animated.View>
         </View>
       )}
-      {(!['albums', 'artists'].includes(category) || group) && (
-        <View style={local.viewRow}>
+      <View style={local.viewRow}>
+        {(!['albums', 'artists'].includes(category) || group) && (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
               preferences.songGrid ? 'Show song list' : 'Show song grid'
             }
-            disabled={preferences.busy}
-            onPress={() =>
-              preferences.update({ songGrid: !preferences.songGrid })
-            }
+            disabled={preferences.busy || changingView}
+            onPress={changeView}
             style={local.viewButton}
           >
             <Icon
@@ -367,8 +395,8 @@ export default function LibraryScreen({
               size={20}
             />
           </Pressable>
-        </View>
-      )}
+        )}
+      </View>
       {search && (
         <TextInput
           autoFocus
@@ -418,7 +446,11 @@ export default function LibraryScreen({
         </Text>
       )}
       {group ? (
-        <SlidePanel key={group}>{renderPage(category)}</SlidePanel>
+        <SlidePanel key={group}>
+          <Animated.View style={[styles.flex, { opacity: gridOpacity }]}>
+            {renderPage(category)}
+          </Animated.View>
+        </SlidePanel>
       ) : (
         <Animated.ScrollView
           ref={pager}
@@ -444,9 +476,9 @@ export default function LibraryScreen({
           }
         >
           {categories.map((item, i) => (
-            <View
+            <Animated.View
               key={item}
-              style={{ width }}
+              style={{ width, opacity: gridOpacity }}
               accessibilityElementsHidden={i !== index}
               importantForAccessibility={
                 i === index ? 'auto' : 'no-hide-descendants'
@@ -454,7 +486,7 @@ export default function LibraryScreen({
             >
               {/* Four stable pages; FlatList still virtualizes their rows. */}
               {renderPage(item)}
-            </View>
+            </Animated.View>
           ))}
         </Animated.ScrollView>
       )}
@@ -631,7 +663,7 @@ function Empty({ query, favorites }: { query: string; favorites: boolean }) {
 const local = StyleSheet.create({
   gridRow: { gap: 12 },
   tile: { marginBottom: 24, gap: 6 },
-  viewRow: { alignItems: 'flex-end', paddingHorizontal: 16 },
+  viewRow: { height: 48, alignItems: 'flex-end', paddingHorizontal: 16 },
   viewButton: {
     minWidth: 48,
     minHeight: 48,

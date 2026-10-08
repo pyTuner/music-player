@@ -12,11 +12,15 @@ type PlayerState = {
   restore(): Promise<void>;
   start(track: Track, collection: Track[]): Promise<void>;
   changeQueue(queue: Track[]): Promise<void>;
+  reorderQueue(queue: Track[]): Promise<void>;
+  removeQueueItem(id: string): Promise<void>;
+  moveQueueItem(id: string, direction: -1 | 1): Promise<void>;
   command(
     action: 'play' | 'pause' | 'next' | 'previous',
     seconds?: never,
   ): Promise<void>;
   seek(seconds: number): Promise<void>;
+  seekBy(delta: number, expectedTrackId: string): Promise<void>;
   refresh(): Promise<void>;
 };
 const emptyStatus: PlaybackStatus = {
@@ -75,6 +79,74 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ busy: false });
     }
   },
+  async moveQueueItem(id, direction) {
+    if (get().busy) {
+      return;
+    }
+    const queue = [...get().queue];
+    const from = queue.findIndex(track => track.id === id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= queue.length) {
+      return;
+    }
+    queue.splice(to, 0, queue.splice(from, 1)[0]);
+    await get().reorderQueue(queue);
+  },
+  async reorderQueue(queue) {
+    if (get().busy) {
+      return;
+    }
+    const current = get().queue;
+    const ids = new Set(queue.map(track => track.id));
+    if (
+      queue.length !== current.length ||
+      ids.size !== current.length ||
+      current.some(track => !ids.has(track.id))
+    ) {
+      set({ error: 'Queue changed. Please try reordering again.' });
+      return;
+    }
+    set({ busy: true, error: '' });
+    try {
+      const engine = getAudioEngine();
+      const status = await engine.getStatus();
+      if (status.trackId) {
+        await engine.reorderQueue(queue.map(track => track.id));
+      } else {
+        await engine.setQueue(queue, 0);
+      }
+      set({ queue });
+      await writePreference('queue', queue);
+      await get().refresh();
+    } catch (error) {
+      set({ error: String(error) });
+    } finally {
+      set({ busy: false });
+    }
+  },
+  async removeQueueItem(id) {
+    if (get().busy || !get().queue.some(track => track.id === id)) {
+      return;
+    }
+    set({ busy: true, error: '' });
+    try {
+      const engine = getAudioEngine();
+      const status = await engine.getStatus();
+      const queue = get().queue.filter(track => track.id !== id);
+      if (status.trackId) {
+        await engine.removeQueueItem(id);
+      } else {
+        await engine.setQueue(queue, 0);
+      }
+      set({ queue });
+      await writePreference('queue', queue);
+      await get().refresh();
+    } catch (error) {
+      set({ error: String(error) });
+    } finally {
+      set({ busy: false });
+    }
+  },
   async changeQueue(queue) {
     if (get().busy) {
       return;
@@ -112,6 +184,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       }
       await engine[action]();
       await get().refresh();
+    } catch (error) {
+      set({ error: String(error) });
+    } finally {
+      set({ busy: false });
+    }
+  },
+  async seekBy(delta, expectedTrackId) {
+    if (get().busy || !Number.isFinite(delta)) {
+      return;
+    }
+    set({ busy: true, error: '' });
+    try {
+      const engine = getAudioEngine();
+      const current = await engine.getStatus();
+      if (current.trackId !== expectedTrackId || current.duration <= 0) {
+        return;
+      }
+      await engine.seek(
+        Math.max(0, Math.min(current.duration, current.position + delta)),
+      );
+      set({ status: await engine.getStatus() });
     } catch (error) {
       set({ error: String(error) });
     } finally {

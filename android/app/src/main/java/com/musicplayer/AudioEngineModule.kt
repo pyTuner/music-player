@@ -43,10 +43,34 @@ class AudioEngineModule(private val context: ReactApplicationContext) : NativeAu
     }
     null
   }
+  override fun removeQueueItem(id: String, promise: Promise) = withPlayer(promise) { player ->
+    val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == id }
+    requireNotNull(index) { "Queue changed. Please try again." }
+    player.removeMediaItem(index)
+    null
+  }
+  override fun reorderQueue(ids: ReadableArray, promise: Promise) = withPlayer(promise) { player ->
+    val requested = (0 until ids.size()).map { requireNotNull(ids.getString(it)) }
+    val existing = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+    require(requested.size == existing.size && requested.toSet().size == requested.size && requested.toSet() == existing.toSet()) {
+      "Queue changed. Please try reordering again."
+    }
+    // Move existing MediaItems in place: preserve the active item, position and play state.
+    requested.forEachIndexed { destination, id ->
+      if (player.getMediaItemAt(destination).mediaId == id) return@forEachIndexed
+      val source = (0 until player.mediaItemCount).first { player.getMediaItemAt(it).mediaId == id }
+      if (source != destination) player.moveMediaItem(source, destination)
+    }
+    null
+  }
   override fun play(promise: Promise) = withPlayer(promise) { it.play(); null }
   override fun pause(promise: Promise) = withPlayer(promise) { it.pause(); null }
   override fun next(promise: Promise) = withPlayer(promise) { it.seekToNextMediaItem(); null }
-  override fun previous(promise: Promise) = withPlayer(promise) { it.seekToPreviousMediaItem(); null }
+  override fun previous(promise: Promise) = withPlayer(promise) { player ->
+    if (player.currentPosition > 5000 || !player.hasPreviousMediaItem()) player.seekTo(0)
+    else player.seekToPreviousMediaItem()
+    null
+  }
   override fun seek(seconds: Double, promise: Promise) = withPlayer(promise) {
     require(seconds.isFinite() && seconds >= 0) { "Invalid seek position." }
     it.seekTo((seconds * 1000).toLong()); null
