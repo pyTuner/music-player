@@ -20,7 +20,7 @@ export default function SettingsScreen() {
   const preferences = usePreferences();
   const library = useLibraryStore();
   return (
-    <SafeAreaView edges={['bottom']}>
+    <SafeAreaView edges={['bottom']} style={styles.root}>
       <ScrollView style={styles.root} contentContainerStyle={styles.content}>
         <Text style={styles.heading}>Lumia, in spirit</Text>
         <Text style={styles.muted}>
