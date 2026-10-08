@@ -4,6 +4,10 @@ import android.app.Activity
 import android.content.ContentUris
 import android.content.Intent
 import android.media.MediaMetadataRetriever
+import android.media.MediaScannerConnection
+import android.os.Build
+import android.os.Environment
+import android.os.storage.StorageManager
 import android.net.Uri
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -12,6 +16,8 @@ import com.musicplayer.specs.NativeMusicLibrarySpec
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.Executors
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class MusicLibraryModule(private val context: ReactApplicationContext) : NativeMusicLibrarySpec(context) {
   private val worker = Executors.newSingleThreadExecutor()
@@ -52,6 +58,35 @@ class MusicLibraryModule(private val context: ReactApplicationContext) : NativeM
   init { context.addActivityEventListener(listener) }
   override fun getName() = "NativeMusicLibrary"
   private fun importDirectory() = File(context.filesDir, "audio").apply { mkdirs() }
+  private val indexedFiles = mutableMapOf<String, Pair<Long, Long>>()
+
+  // Refresh copied/downloaded files before querying MediaStore. A query alone
+  // cannot discover audio that the system scanner has not indexed yet.
+  private fun refreshSharedAudio() {
+    val roots = if (Build.VERSION.SDK_INT >= 30) {
+      context.getSystemService(StorageManager::class.java).storageVolumes.mapNotNull { it.directory }
+    } else listOf(Environment.getExternalStorageDirectory())
+    val files = roots.distinctBy { it.absolutePath }.flatMap { root ->
+      root.walkTopDown().onEnter { directory ->
+        directory == root || (!directory.name.startsWith(".") &&
+          directory.name != "Android" && !File(directory, ".nomedia").exists())
+      }.filter { file ->
+        file.isFile && file.canRead() && SharedAudioFiles.isAudio(file.name) &&
+          indexedFiles[file.absolutePath] != Pair(file.lastModified(), file.length())
+      }.toList()
+    }
+    if (files.isEmpty()) return
+    val stamps = files.associate { it.absolutePath to Pair(it.lastModified(), it.length()) }
+    val completed = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Long>>()
+    val pending = CountDownLatch(files.size)
+    MediaScannerConnection.scanFile(context, files.map { it.absolutePath }.toTypedArray(), null) { path, uri ->
+      if (uri != null) stamps[path]?.let { completed[path] = it }
+      pending.countDown()
+    }
+    val finished = pending.await(45, TimeUnit.SECONDS)
+    indexedFiles.putAll(completed)
+    check(finished) { "Android is still indexing your audio. Please scan again shortly." }
+  }
 
   override fun scan(includeRecordings: Boolean, promise: Promise) {
     worker.execute {
@@ -59,11 +94,12 @@ class MusicLibraryModule(private val context: ReactApplicationContext) : NativeM
         val result = Arguments.createArray()
         val permission = if (android.os.Build.VERSION.SDK_INT >= 33) "android.permission.READ_MEDIA_AUDIO" else "android.permission.READ_EXTERNAL_STORAGE"
         if (context.checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+          refreshSharedAudio()
           val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
           val pathColumn = if (android.os.Build.VERSION.SDK_INT >= 29) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA
           val columns = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.DURATION, pathColumn, MediaStore.Audio.Media.DISPLAY_NAME)
           val selection = if (includeRecordings) null else buildString {
-            append("${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.IS_RINGTONE} = 0 AND ${MediaStore.Audio.Media.IS_NOTIFICATION} = 0 AND ${MediaStore.Audio.Media.IS_ALARM} = 0")
+            append("${MediaStore.Audio.Media.IS_RINGTONE} = 0 AND ${MediaStore.Audio.Media.IS_NOTIFICATION} = 0 AND ${MediaStore.Audio.Media.IS_ALARM} = 0")
             if (android.os.Build.VERSION.SDK_INT >= 31) append(" AND ${MediaStore.Audio.Media.IS_RECORDING} = 0")
           }
           context.contentResolver.query(collection, columns, selection, null, "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->

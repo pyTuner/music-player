@@ -9,6 +9,8 @@ type PlayerState = {
   status: PlaybackStatus;
   busy: boolean;
   error: string;
+  setShuffle(enabled: boolean): Promise<void>;
+  setRepeatMode(mode: 'off' | 'one' | 'all'): Promise<void>;
   restore(): Promise<void>;
   start(track: Track, collection: Track[]): Promise<void>;
   changeQueue(queue: Track[]): Promise<void>;
@@ -36,6 +38,32 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   status: emptyStatus,
   busy: false,
   error: '',
+  async setShuffle(enabled) {
+    if (get().busy) return;
+    set({ busy: true, error: '' });
+    try {
+      const engine = getAudioEngine();
+      await engine.setShuffle(enabled);
+      set({ status: await engine.getStatus() });
+    } catch (error) {
+      set({ error: String(error) });
+    } finally {
+      set({ busy: false });
+    }
+  },
+  async setRepeatMode(mode) {
+    if (get().busy) return;
+    set({ busy: true, error: '' });
+    try {
+      const engine = getAudioEngine();
+      await engine.setRepeatMode(mode);
+      set({ status: await engine.getStatus() });
+    } catch (error) {
+      set({ error: String(error) });
+    } finally {
+      set({ busy: false });
+    }
+  },
   async restore() {
     try {
       const saved = await readPreference<Track[]>('queue', []);

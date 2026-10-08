@@ -79,12 +79,20 @@ export function Artwork({
       )}
       <Text
         numberOfLines={1}
+        allowFontScaling={!large}
         style={[
           styles.artLetter,
           (large || size !== undefined) && styles.largeLetter,
+          large && styles.coverLetter,
+          large && {
+            fontSize: (size ?? 280) * 0.76,
+            lineHeight: (size ?? 280) * 0.86,
+          },
         ]}
       >
-        {track.title.charAt(0).toLowerCase()}
+        {large
+          ? track.title.charAt(0).toUpperCase()
+          : track.title.charAt(0).toLowerCase()}
       </Text>
       {large && (
         <Text numberOfLines={1} ellipsizeMode="tail" style={styles.artCaption}>
@@ -183,6 +191,13 @@ const baseStyles = StyleSheet.create({
   },
   artLetter: { color: '#FFFFFF', fontSize: 38, fontFamily: theme.lightFont },
   largeLetter: { fontSize: 62, color: '#FFFFFF', opacity: 0.85 },
+  coverLetter: {
+    fontFamily: 'sans-serif-condensed',
+    fontWeight: '900',
+    includeFontPadding: false,
+    opacity: 1,
+    transform: [{ scaleX: 0.72 }],
+  },
   disc: {
     position: 'absolute',
     width: '84%',

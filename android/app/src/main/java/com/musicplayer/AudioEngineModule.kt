@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import androidx.media3.common.Player
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -63,6 +64,19 @@ class AudioEngineModule(private val context: ReactApplicationContext) : NativeAu
     }
     null
   }
+  override fun setShuffle(enabled: Boolean, promise: Promise) = withPlayer(promise) {
+    it.shuffleModeEnabled = enabled
+    null
+  }
+  override fun setRepeatMode(mode: String, promise: Promise) = withPlayer(promise) {
+    it.repeatMode = when (mode) {
+      "off" -> Player.REPEAT_MODE_OFF
+      "one" -> Player.REPEAT_MODE_ONE
+      "all" -> Player.REPEAT_MODE_ALL
+      else -> throw IllegalArgumentException("Invalid repeat mode")
+    }
+    null
+  }
   override fun play(promise: Promise) = withPlayer(promise) { it.play(); null }
   override fun pause(promise: Promise) = withPlayer(promise) { it.pause(); null }
   override fun next(promise: Promise) = withPlayer(promise) { it.seekToNextMediaItem(); null }
@@ -79,6 +93,13 @@ class AudioEngineModule(private val context: ReactApplicationContext) : NativeAu
     Arguments.createMap().apply {
       putString("trackId", player.currentMediaItem?.mediaId ?: "")
       putBoolean("playing", player.isPlaying)
+      putBoolean("shuffle", player.shuffleModeEnabled)
+      putString("repeatMode", when (player.repeatMode) {
+        Player.REPEAT_MODE_ONE -> "one"
+        Player.REPEAT_MODE_ALL -> "all"
+        else -> "off"
+      })
+      putBoolean("hasNext", player.hasNextMediaItem())
       putDouble("position", player.currentPosition.coerceAtLeast(0).toDouble() / 1000)
       putDouble("duration", player.duration.coerceAtLeast(0).toDouble() / 1000)
       putString("error", player.playerError?.message ?: "")

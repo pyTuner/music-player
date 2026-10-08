@@ -8,11 +8,16 @@ export type PlaybackStatus = {
   position: number;
   duration: number;
   error: string;
+  shuffle?: boolean;
+  repeatMode?: string;
+  hasNext?: boolean;
 };
 export interface Spec extends TurboModule {
   setQueue(tracks: QueueSource[], index: number): Promise<void>;
   removeQueueItem(id: string): Promise<void>;
   reorderQueue(ids: string[]): Promise<void>;
+  setShuffle(enabled: boolean): Promise<void>;
+  setRepeatMode(mode: string): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
   seek(seconds: number): Promise<void>;

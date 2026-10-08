@@ -24,12 +24,16 @@ export default function PlayerScreen({
   const [seeking, setSeeking] = useState(false);
   const [lyrics, setLyrics] = useState(false);
   const [size, setSize] = useState({ width: 360, height: 500 });
-  const compact = size.height < 340;
+  const compact = size.height < 340 || size.width < 350;
   const landscape = size.width > size.height * 1.25;
   const track =
     player.queue.find(item => item.id === player.status.trackId) ??
     player.queue[0];
   const index = player.queue.findIndex(item => item.id === track?.id);
+  const repeatMode = player.status.repeatMode ?? 'off';
+  const shuffle = player.status.shuffle ?? false;
+  const nextRepeat =
+    repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off';
   const loaded = !!track && player.status.trackId === track.id;
   const duration =
     (loaded ? player.status.duration : 0) || track?.duration || 0;
@@ -133,6 +137,24 @@ export default function PlayerScreen({
                   <View
                     style={[local.controls, compact && local.compactControls]}
                   >
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        shuffle ? 'Shuffle on' : 'Shuffle off'
+                      }
+                      accessibilityState={{
+                        selected: shuffle,
+                        disabled: player.busy,
+                      }}
+                      disabled={player.busy}
+                      onPress={() => player.setShuffle(!shuffle)}
+                      style={local.action}
+                    >
+                      <Icon
+                        name="shuffle"
+                        color={shuffle ? accent : '#AAAAAA'}
+                      />
+                    </Pressable>
                     <TransportButton
                       kind="previous"
                       label="Previous track"
@@ -155,10 +177,42 @@ export default function PlayerScreen({
                       disabled={
                         player.busy ||
                         !loaded ||
-                        index >= player.queue.length - 1
+                        !(
+                          player.status.hasNext ??
+                          index < player.queue.length - 1
+                        )
                       }
                       onPress={() => player.command('next')}
                     />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        repeatMode === 'one'
+                          ? 'Repeat one song'
+                          : repeatMode === 'all'
+                          ? 'Repeat queue'
+                          : 'Repeat off'
+                      }
+                      accessibilityHint={`Tap to ${
+                        nextRepeat === 'off'
+                          ? 'turn repeat off'
+                          : nextRepeat === 'one'
+                          ? 'repeat this song'
+                          : 'repeat the queue'
+                      }`}
+                      accessibilityState={{
+                        selected: repeatMode !== 'off',
+                        disabled: player.busy,
+                      }}
+                      disabled={player.busy}
+                      onPress={() => player.setRepeatMode(nextRepeat)}
+                      style={local.action}
+                    >
+                      <Icon
+                        name={repeatMode === 'one' ? 'repeatOne' : 'repeat'}
+                        color={repeatMode === 'off' ? '#AAAAAA' : accent}
+                      />
+                    </Pressable>
                   </View>
                   <View style={local.bottom}>
                     <Pressable

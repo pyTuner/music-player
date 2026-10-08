@@ -40,3 +40,9 @@
 - Use Android debug builds for ongoing development. Do not build release APKs unless explicitly requested.
 - Now Playing opens the queue with a LEFT swipe. Swipe RIGHT on the queue header/empty area to return; right swipes on rows add favorites.
 - Long-press queue drag handles and move vertically to reorder; swipe rows left to remove. Clear queue belongs in the overflow menu.
+
+## Playback modes
+
+- Now Playing has native Android shuffle and a repeat cycle: off → queue → one → off. Highlight active modes with the chosen accent; repeat-one uses its own SVG icon.
+- Media3 owns playback order/repetition, including background playback. PlaybackService persists mode changes locally. Queue ordering remains editable; shuffle changes traversal, not the displayed sequence.
+- Large cover initials use bold, tall condensed uppercase lettering; small library initials retain their existing typography.

@@ -25,6 +25,8 @@ const status = {
 };
 const engine = {
   setQueue: jest.fn(),
+  setShuffle: jest.fn(),
+  setRepeatMode: jest.fn(),
   reorderQueue: jest.fn(),
   removeQueueItem: jest.fn(),
   play: jest.fn(),
@@ -170,4 +172,34 @@ test('removes from a restored queue before playback without autoplay', async () 
   await usePlayerStore.getState().removeQueueItem(track.id);
   expect(engine.setQueue).toHaveBeenCalledWith([second], 0);
   expect(engine.play).not.toHaveBeenCalled();
+});
+
+test('shuffle updates native playback without rebuilding or seeking the queue', async () => {
+  engine.setShuffle.mockResolvedValue(undefined);
+  engine.getStatus.mockResolvedValue({ ...status, shuffle: true });
+  await usePlayerStore.getState().setShuffle(true);
+  expect(engine.setShuffle).toHaveBeenCalledWith(true);
+  expect(usePlayerStore.getState().status.shuffle).toBe(true);
+  expect(engine.setQueue).not.toHaveBeenCalled();
+  expect(engine.seek).not.toHaveBeenCalled();
+});
+
+test.each(['off', 'all', 'one'] as const)(
+  'repeat %s is confirmed by native playback',
+  async mode => {
+    engine.getStatus.mockResolvedValue({ ...status, repeatMode: mode });
+    await usePlayerStore.getState().setRepeatMode(mode);
+    expect(engine.setRepeatMode).toHaveBeenCalledWith(mode);
+    expect(usePlayerStore.getState().status.repeatMode).toBe(mode);
+    expect(engine.setQueue).not.toHaveBeenCalled();
+  },
+);
+
+test('failed mode changes preserve the confirmed setting and release the controls', async () => {
+  usePlayerStore.setState({ status: { ...status, repeatMode: 'all' } });
+  engine.setRepeatMode.mockRejectedValue(new Error('Mode unavailable'));
+  await usePlayerStore.getState().setRepeatMode('one');
+  expect(usePlayerStore.getState().status.repeatMode).toBe('all');
+  expect(usePlayerStore.getState().busy).toBe(false);
+  expect(usePlayerStore.getState().error).toContain('Mode unavailable');
 });
