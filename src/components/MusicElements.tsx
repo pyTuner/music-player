@@ -1,3 +1,5 @@
+import { useAccent } from '../store/preferencesStore';
+import { useThemedStyles } from '../theme/useThemedStyles';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Track, formatDuration } from '../types/Track';
@@ -16,6 +18,7 @@ export function TextButton({
   primary?: boolean;
   accessibilityLabel?: string;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -44,17 +47,27 @@ export function TextButton({
 export function Artwork({
   track,
   large = false,
+  size,
 }: {
   track: Track;
   large?: boolean;
+  size?: number;
 }) {
+  const accent = useAccent();
+  const styles = useThemedStyles(baseStyles);
   return (
     <View
       accessible={false}
       style={[
         styles.art,
         large && styles.largeArt,
-        { backgroundColor: track.color },
+        { backgroundColor: `${accent}66` },
+        size !== undefined && styles.sizedArt,
+        size !== undefined && {
+          width: size,
+          maxWidth: size,
+          height: size,
+        },
       ]}
     >
       {large && (
@@ -66,7 +79,10 @@ export function Artwork({
       )}
       <Text
         numberOfLines={1}
-        style={[styles.artLetter, large && styles.largeLetter]}
+        style={[
+          styles.artLetter,
+          (large || size !== undefined) && styles.largeLetter,
+        ]}
       >
         {track.title.charAt(0).toLowerCase()}
       </Text>
@@ -90,6 +106,7 @@ export function TrackRow({
   onPress: () => void;
   onAdd?: () => void;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={[styles.row, selected && styles.selectedRow]}>
       <Pressable
@@ -126,7 +143,8 @@ export function TrackRow({
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
+  sizedArt: { marginTop: 0, marginBottom: 0 },
   primaryButton: {
     backgroundColor: theme.colors.accent,
     borderColor: theme.colors.accent,

@@ -1,4 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import Icon from '../../components/Icon';
+import { useAccent, usePreferences } from '../../store/preferencesStore';
+import { useThemedStyles } from '../../theme/useThemedStyles';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -24,7 +27,7 @@ import {
   SlidePanel,
   useReducedMotion,
 } from '../../components/MetroMotion';
-import { styles } from '../../theme/styles';
+import { styles as baseStyles } from '../../theme/styles';
 import { theme } from '../../theme/theme';
 import type { ScreenProps } from '../../app/navigation';
 
@@ -33,12 +36,19 @@ type Category = (typeof categories)[number];
 export default function LibraryScreen({
   navigation,
 }: ScreenProps<'Collection'>) {
+  const styles = useThemedStyles(baseStyles);
   const library = useLibraryStore();
+  const accent = useAccent();
+  const preferences = usePreferences();
+
   const { width } = useWindowDimensions();
+  const tileSize = Math.max(80, (width - 60) / 2);
   const reduced = useReducedMotion();
   const pager = useRef<React.ElementRef<typeof ScrollView>>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const [index, setIndex] = useState(0);
+  const selectedIndex = useRef(index);
+  selectedIndex.current = index;
   const [offsets, setOffsets] = useState([0, 155, 330, 495]);
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState(false);
@@ -75,9 +85,42 @@ export default function LibraryScreen({
   }, [group, search, navigation]);
   // Keep the selected page aligned after rotation or returning from an album.
   useEffect(() => {
-    pager.current?.scrollTo({ x: index * width, animated: false });
-    scrollX.setValue(index * width);
-  }, [width, group, index, scrollX]);
+    pager.current?.scrollTo({
+      x: selectedIndex.current * width,
+      animated: false,
+    });
+    scrollX.setValue(selectedIndex.current * width);
+  }, [width, group, scrollX]);
+  // Keep native animation nodes and the event binding stable across page changes.
+  const motion = useMemo(
+    () => ({
+      panorama: scrollX.interpolate({
+        inputRange: [0, width * 3],
+        outputRange: [0, -64],
+        extrapolate: 'clamp',
+      }),
+      heading: scrollX.interpolate({
+        inputRange: categories.map((_, i) => width * i),
+        outputRange: offsets.map(value => -value),
+        extrapolate: 'clamp',
+      }),
+      opacity: categories.map((_, i) =>
+        scrollX.interpolate({
+          inputRange: [(i - 1) * width, i * width, (i + 1) * width],
+          outputRange: [0.32, 1, 0.32],
+          extrapolate: 'clamp',
+        }),
+      ),
+    }),
+    [scrollX, width, offsets],
+  );
+  const onPagerScroll = useMemo(
+    () =>
+      Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+        useNativeDriver: true,
+      }),
+    [scrollX],
+  );
   const matching = library.tracks.filter(track =>
     `${track.title} ${track.artist} ${track.album}`
       .toLowerCase()
@@ -113,7 +156,12 @@ export default function LibraryScreen({
       });
       return (
         <FlatList
+          key={`${page}-groups`}
+          testID={`${page}-list`}
+          removeClippedSubviews={false}
           data={[...groups.entries()]}
+          numColumns={2}
+          columnWrapperStyle={local.gridRow}
           keyExtractor={item => item[0]}
           refreshing={library.busy}
           onRefresh={() => library.scan()}
@@ -125,12 +173,13 @@ export default function LibraryScreen({
               accessibilityLabel={`Open ${name}`}
               onPress={() => setGroup(name)}
               style={({ pressed }) => [
-                local.group,
+                local.tile,
+                { width: tileSize },
                 pressed && styles.touchFeedback,
               ]}
             >
-              <Artwork track={entries[0]} />
-              <View style={styles.flex}>
+              <Artwork track={entries[0]} size={tileSize} />
+              <View>
                 <Text numberOfLines={2} style={local.groupTitle}>
                   {name}
                 </Text>
@@ -142,8 +191,55 @@ export default function LibraryScreen({
         />
       );
     }
+    if (preferences.songGrid) {
+      return (
+        <FlatList
+          key={`${page}-grid`}
+          testID={`${page}-list`}
+          removeClippedSubviews={false}
+          data={tracks}
+          numColumns={2}
+          columnWrapperStyle={local.gridRow}
+          keyExtractor={track => track.id}
+          contentContainerStyle={local.list}
+          refreshing={library.busy}
+          onRefresh={() => library.scan()}
+          renderItem={({ item }) => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Play ${item.title} by ${item.artist}`}
+              onPress={() => {
+                usePlayerStore.getState().start(item, tracks);
+                navigation.navigate('Player');
+              }}
+              style={[local.tile, { width: tileSize }]}
+            >
+              <Artwork track={item} size={tileSize} />
+              <Text
+                numberOfLines={2}
+                style={[
+                  local.groupTitle,
+                  item.id === currentId && { color: accent },
+                ]}
+              >
+                {item.title}
+              </Text>
+              <Text numberOfLines={1} style={styles.muted}>
+                {item.artist}
+              </Text>
+            </Pressable>
+          )}
+          ListEmptyComponent={
+            <Empty query={query} favorites={page === 'favorites'} />
+          }
+        />
+      );
+    }
     return (
       <FlatList
+        key={`${page}-rows`}
+        testID={`${page}-list`}
+        removeClippedSubviews={false}
         data={tracks}
         keyExtractor={track => track.id}
         refreshing={library.busy}
@@ -186,13 +282,7 @@ export default function LibraryScreen({
             {
               transform: [
                 {
-                  translateX: reduced
-                    ? 0
-                    : scrollX.interpolate({
-                        inputRange: [0, width * 3],
-                        outputRange: [0, -64],
-                        extrapolate: 'clamp',
-                      }),
+                  translateX: reduced ? 0 : motion.panorama,
                 },
               ],
             },
@@ -220,11 +310,7 @@ export default function LibraryScreen({
               {
                 transform: [
                   {
-                    translateX: scrollX.interpolate({
-                      inputRange: categories.map((_, i) => width * i),
-                      outputRange: offsets.map(value => -value),
-                      extrapolate: 'clamp',
-                    }),
+                    translateX: motion.heading,
                   },
                 ],
               },
@@ -251,15 +337,7 @@ export default function LibraryScreen({
                   style={[
                     local.pivotText,
                     {
-                      opacity: scrollX.interpolate({
-                        inputRange: [
-                          (i - 1) * width,
-                          i * width,
-                          (i + 1) * width,
-                        ],
-                        outputRange: [0.32, 1, 0.32],
-                        extrapolate: 'clamp',
-                      }),
+                      opacity: motion.opacity[i],
                     },
                   ]}
                 >
@@ -268,6 +346,27 @@ export default function LibraryScreen({
               </Pressable>
             ))}
           </Animated.View>
+        </View>
+      )}
+      {(!['albums', 'artists'].includes(category) || group) && (
+        <View style={local.viewRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              preferences.songGrid ? 'Show song list' : 'Show song grid'
+            }
+            disabled={preferences.busy}
+            onPress={() =>
+              preferences.update({ songGrid: !preferences.songGrid })
+            }
+            style={local.viewButton}
+          >
+            <Icon
+              name={preferences.songGrid ? 'list' : 'grid'}
+              color={accent}
+              size={20}
+            />
+          </Pressable>
         </View>
       )}
       {search && (
@@ -282,10 +381,7 @@ export default function LibraryScreen({
         />
       )}
       {library.busy && (
-        <ActivityIndicator
-          accessibilityLabel="Scanning audio"
-          color={theme.colors.accent}
-        />
+        <ActivityIndicator accessibilityLabel="Scanning audio" color={accent} />
       )}
       {library.permission === 'denied' && (
         <View style={local.inset}>
@@ -328,15 +424,13 @@ export default function LibraryScreen({
           ref={pager}
           testID="collection-pager"
           horizontal
+          removeClippedSubviews={false}
           pagingEnabled
           directionalLockEnabled
           showsHorizontalScrollIndicator={false}
           style={styles.flex}
           scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-            { useNativeDriver: true },
-          )}
+          onScroll={onPagerScroll}
           onMomentumScrollEnd={event =>
             setIndex(
               Math.max(
@@ -358,7 +452,8 @@ export default function LibraryScreen({
                 i === index ? 'auto' : 'no-hide-descendants'
               }
             >
-              {Math.abs(i - index) <= 1 ? renderPage(item) : null}
+              {/* Four stable pages; FlatList still virtualizes their rows. */}
+              {renderPage(item)}
             </View>
           ))}
         </Animated.ScrollView>
@@ -472,14 +567,19 @@ function AppAction({
         (pressed || disabled) && local.dim,
       ]}
     >
-      {glyph === 'search' ? (
-        <View accessible={false} style={local.searchIcon}>
-          <View style={local.searchLens} />
-          <View style={local.searchHandle} />
-        </View>
-      ) : (
-        <Text style={local.icon}>{glyph}</Text>
-      )}
+      <Icon
+        name={
+          glyph === 'search'
+            ? 'search'
+            : glyph === '×'
+            ? 'close'
+            : glyph === '▷'
+            ? 'play'
+            : glyph === '≡'
+            ? 'list'
+            : 'more'
+        }
+      />
     </Pressable>
   );
 }
@@ -508,6 +608,7 @@ function MenuAction({
   );
 }
 function Empty({ query, favorites }: { query: string; favorites: boolean }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <View style={styles.empty}>
       <Text style={styles.heading}>
@@ -528,6 +629,15 @@ function Empty({ query, favorites }: { query: string; favorites: boolean }) {
   );
 }
 const local = StyleSheet.create({
+  gridRow: { gap: 12 },
+  tile: { marginBottom: 24, gap: 6 },
+  viewRow: { alignItems: 'flex-end', paddingHorizontal: 16 },
+  viewButton: {
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   footer: { backgroundColor: '#171717' },
   searchIcon: { width: 28, height: 28 },
   searchLens: {
@@ -579,7 +689,7 @@ const local = StyleSheet.create({
   },
   groupTitle: {
     fontFamily: theme.lightFont,
-    fontSize: 25,
+    fontSize: 20,
     color: '#FFFFFF',
     marginBottom: 6,
   },

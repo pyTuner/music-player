@@ -1,18 +1,18 @@
+import { useThemedStyles } from '../../theme/useThemedStyles';
 import React from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { TextButton, TrackRow } from '../../components/MusicElements';
 import { usePlayerStore } from '../../store/playerStore';
-import { styles } from '../../theme/styles';
+import { styles as baseStyles } from '../../theme/styles';
 import type { ScreenProps } from '../../app/navigation';
 
 export default function QueueScreen({ navigation }: ScreenProps<'Queue'>) {
+  const styles = useThemedStyles(baseStyles);
   const player = usePlayerStore();
   return (
     <View style={styles.root}>
       <View style={styles.content}>
-        <Text style={styles.muted}>
-          Keep your next listens close.
-        </Text>
+        <Text style={styles.muted}>Keep your next listens close.</Text>
         <View style={styles.row}>
           <TextButton
             label="clear queue"

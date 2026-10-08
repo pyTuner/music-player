@@ -1,3 +1,4 @@
+import { useThemedStyles } from '../theme/useThemedStyles';
 import React, { useEffect, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import { formatDuration } from '../types/Track';
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export default function SeekBar(props: Props) {
+  const styles = useThemedStyles(baseStyles);
   const latest = useRef(props);
   latest.current = props;
   const width = useRef(0);
@@ -168,7 +170,7 @@ export default function SeekBar(props: Props) {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   touch: { height: 48, justifyContent: 'center', marginHorizontal: 8 },
   rail: { height: 3, backgroundColor: '#30383A' },
   fill: { height: 3, backgroundColor: theme.colors.accent },

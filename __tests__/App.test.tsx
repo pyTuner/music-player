@@ -123,3 +123,41 @@ test('pivot navigation follows swipes, opens groups, and keeps import in overflo
   expect(renderer.root.findByProps({ label: 'import audio' })).toBeTruthy();
   await ReactTestRenderer.act(async () => renderer.unmount());
 });
+
+test('forward and reverse swipes preserve all four section list instances', async () => {
+  const props = {
+    navigation: { navigate: jest.fn() },
+    route: { key: 'collection', name: 'Collection' },
+  } as unknown as ScreenProps<'Collection'>;
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(async () => {
+    renderer = ReactTestRenderer.create(<LibraryScreen {...props} />);
+  });
+  const sections = ['songs', 'albums', 'artists', 'favorites'];
+  const lists = sections.map(
+    name => renderer.root.findAllByProps({ testID: `${name}-list` })[0],
+  );
+  const pager = renderer.root.findByProps({ testID: 'collection-pager' });
+  const width = pager.props.children[0].props.style.width;
+  const scrollBinding = pager.props.onScroll;
+  for (const index of [1, 2, 3, 2, 1, 0, 3, 0]) {
+    await ReactTestRenderer.act(async () => {
+      pager.props.onMomentumScrollEnd({
+        nativeEvent: { contentOffset: { x: index * width } },
+      });
+    });
+    sections.forEach((name, i) => {
+      expect(renderer.root.findAllByProps({ testID: `${name}-list` })[0]).toBe(
+        lists[i],
+      );
+    });
+    expect(pager.props.onScroll).toBe(scrollBinding);
+    expect(
+      renderer.root.findAllByProps({
+        accessibilityRole: 'tab',
+        accessibilityLabel: sections[index],
+      })[0].props.accessibilityState.selected,
+    ).toBe(true);
+  }
+  await ReactTestRenderer.act(async () => renderer.unmount());
+});

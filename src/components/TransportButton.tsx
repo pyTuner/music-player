@@ -1,3 +1,4 @@
+import { useThemedStyles } from '../theme/useThemedStyles';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { theme } from '../theme/theme';
@@ -7,14 +8,17 @@ export default function TransportButton({
   label,
   disabled = false,
   primary = false,
+  compact = false,
   onPress,
 }: {
   kind: 'play' | 'pause' | 'next' | 'previous';
   label: string;
   disabled?: boolean;
   primary?: boolean;
+  compact?: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(baseStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -25,6 +29,7 @@ export default function TransportButton({
       style={({ pressed }) => [
         styles.button,
         primary && styles.primary,
+        primary && compact && styles.compact,
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
@@ -48,7 +53,8 @@ export default function TransportButton({
     </Pressable>
   );
 }
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
+  compact: { width: 64, height: 64, borderRadius: 32 },
   button: {
     width: 56,
     height: 56,

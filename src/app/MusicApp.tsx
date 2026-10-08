@@ -1,3 +1,5 @@
+import { useAccent, usePreferences } from '../store/preferencesStore';
+import { useThemedStyles } from '../theme/useThemedStyles';
 import React, { useEffect, useState } from 'react';
 import { MetroHeader, useReducedMotion } from '../components/MetroMotion';
 import MiniPlayer from '../components/MiniPlayer';
@@ -15,7 +17,7 @@ import QueueScreen from '../features/queue/QueueScreen';
 import SettingsScreen from '../features/settings/SettingsScreen';
 import { useLibraryStore } from '../store/libraryStore';
 import { usePlayerStore } from '../store/playerStore';
-import { styles } from '../theme/styles';
+import { styles as baseStyles } from '../theme/styles';
 import { theme } from '../theme/theme';
 import type { Routes } from './navigation';
 
@@ -31,9 +33,12 @@ const navigationTheme = {
   },
 };
 export default function MusicApp() {
+  const styles = useThemedStyles(baseStyles);
+  const accent = useAccent();
   const reducedMotion = useReducedMotion();
   const [currentRoute, setCurrentRoute] = useState('Collection');
   useEffect(() => {
+    usePreferences.getState().initialize();
     useLibraryStore.getState().initialize();
     usePlayerStore.getState().restore();
     const listener = AppState.addEventListener('change', state => {
@@ -56,7 +61,10 @@ export default function MusicApp() {
   return (
     <NavigationContainer
       ref={navigation}
-      theme={navigationTheme}
+      theme={{
+        ...navigationTheme,
+        colors: { ...navigationTheme.colors, primary: accent },
+      }}
       onStateChange={() =>
         setCurrentRoute(navigation.getCurrentRoute()?.name ?? 'Collection')
       }

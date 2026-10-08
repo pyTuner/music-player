@@ -1,246 +1,236 @@
 import React, { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Artwork } from '../../components/MusicElements';
 import SeekBar from '../../components/SeekBar';
 import TransportButton from '../../components/TransportButton';
+import Icon from '../../components/Icon';
+import LyricsPanel from '../../components/LyricsPanel';
 import { usePlayerStore } from '../../store/playerStore';
 import { useLibraryStore } from '../../store/libraryStore';
-import { styles } from '../../theme/styles';
+import { useAccent } from '../../store/preferencesStore';
 import { theme } from '../../theme/theme';
 import type { ScreenProps } from '../../app/navigation';
-
+const ignoreDrag = () => {};
 export default function PlayerScreen({ navigation }: ScreenProps<'Player'>) {
-  const insets = useSafeAreaInsets();
   const player = usePlayerStore();
   const favorites = useLibraryStore(state => state.favorites);
-  const [dragging, setDragging] = useState(false);
+  const favoriteError = useLibraryStore(state => state.error);
+  const accent = useAccent();
+  const [lyrics, setLyrics] = useState(false);
+  const [size, setSize] = useState({ width: 360, height: 500 });
+  const compact = size.height < 340;
+  const landscape = size.width > size.height * 1.25;
   const track =
     player.queue.find(item => item.id === player.status.trackId) ??
     player.queue[0];
   const index = player.queue.findIndex(item => item.id === track?.id);
-  const next = player.queue[index + 1];
   const loaded = !!track && player.status.trackId === track.id;
   const duration =
     (loaded ? player.status.duration : 0) || track?.duration || 0;
+  const artSize = Math.max(
+    0,
+    Math.min(
+      360,
+      landscape ? size.width * 0.38 : size.width - 48,
+      landscape ? size.height - 24 : size.height - 330,
+    ),
+  );
   return (
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={[
-        local.content,
-        { paddingBottom: insets.bottom + 24 },
-      ]}
-      scrollEnabled={!dragging}
-    >
-      {track ? (
-        <>
-          <View style={local.topline}>
-            <Text style={styles.eyebrow}>
-              {player.status.playing ? 'NOW IN ROTATION' : 'TAKE A MOMENT'}
-            </Text>
-            <Text style={styles.muted}>
-              {index + 1} / {player.queue.length}
-            </Text>
-          </View>
-          <Artwork track={track} large />
-          <View style={local.metadata}>
-            <View style={styles.flex}>
-              <Text
-                accessibilityLabel={track.title}
-                numberOfLines={2}
-                ellipsizeMode="tail"
-                style={local.title}
-              >
-                {track.title}
-              </Text>
-              <Text numberOfLines={1} ellipsizeMode="tail" style={local.artist}>
-                {track.artist}
-              </Text>
-              <Text numberOfLines={1} ellipsizeMode="tail" style={styles.muted}>
-                {track.album}
-              </Text>
+    <SafeAreaView edges={['bottom']} style={local.root}>
+      <View
+        testID="player-viewport"
+        onLayout={event => setSize(event.nativeEvent.layout)}
+        style={[local.body, landscape && local.landscape]}
+      >
+        {track ? (
+          <>
+            <View style={[local.artSpace, landscape && local.artLandscape]}>
+              {artSize > 40 && <Artwork track={track} large size={artSize} />}
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                favorites.includes(track.id)
-                  ? 'Remove from favorites'
-                  : 'Add to favorites'
-              }
-              accessibilityState={{ selected: favorites.includes(track.id) }}
-              onPress={() =>
-                useLibraryStore.getState().toggleFavorite(track.id)
-              }
-              style={({ pressed }) => [
-                local.favorite,
-                pressed && local.pressed,
-              ]}
-            >
-              <Text style={local.heart}>
-                {favorites.includes(track.id) ? '♥' : '♡'}
-              </Text>
-            </Pressable>
-          </View>
-          <SeekBar
-            key={track.id}
-            position={loaded ? player.status.position : 0}
-            duration={duration}
-            disabled={player.busy || !loaded}
-            onSeek={player.seek}
-            onDraggingChange={setDragging}
-          />
-          <View style={local.controls}>
-            <TransportButton
-              kind="previous"
-              label="Previous track"
-              disabled={player.busy || !loaded || index <= 0}
-              onPress={() => player.command('previous')}
-            />
-            <TransportButton
-              primary
-              kind={player.status.playing ? 'pause' : 'play'}
-              label={player.status.playing ? 'Pause' : 'Play'}
-              disabled={player.busy}
-              onPress={() =>
-                player.command(player.status.playing ? 'pause' : 'play')
-              }
-            />
-            <TransportButton
-              kind="next"
-              label="Next track"
-              disabled={player.busy || !loaded || !next}
-              onPress={() => player.command('next')}
-            />
-          </View>
-          <View style={local.secondary}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back fifteen seconds"
-              disabled={!loaded || player.busy}
-              onPress={() =>
-                player.seek(Math.max(0, player.status.position - 15))
-              }
-              style={local.smallButton}
-            >
-              <Text style={styles.muted}>↶ 15s</Text>
-            </Pressable>
-            <Text style={local.localLabel}>YOUR MUSIC. YOUR PACE.</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Forward fifteen seconds"
-              disabled={!loaded || player.busy}
-              onPress={() =>
-                player.seek(Math.min(duration, player.status.position + 15))
-              }
-              style={local.smallButton}
-            >
-              <Text style={styles.muted}>15s ↷</Text>
-            </Pressable>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="View playback queue"
-            onPress={() => navigation.navigate('Queue')}
-            style={({ pressed }) => [local.upNext, pressed && local.pressed]}
-          >
-            <View style={styles.flex}>
-              <Text style={styles.eyebrow}>UP NEXT</Text>
-              <Text numberOfLines={1} ellipsizeMode="tail" style={styles.text}>
-                {next?.title ?? 'The end of this rotation'}
-              </Text>
-              <Text numberOfLines={1} style={styles.muted}>
-                {next?.artist ?? 'Add more music to your queue'}
-              </Text>
+            <View style={[local.dock, landscape && local.landscapeDock]}>
+              <View style={[local.metadata, compact && local.compactMetadata]}>
+                <View style={local.flex}>
+                  <Text
+                    accessibilityLabel={track.title}
+                    maxFontSizeMultiplier={1.3}
+                    numberOfLines={1}
+                    style={[local.title, compact && local.compactTitle]}
+                  >
+                    {track.title}
+                  </Text>
+                  <Text
+                    maxFontSizeMultiplier={1.3}
+                    numberOfLines={1}
+                    style={[local.artist, { color: accent }]}
+                  >
+                    {track.artist}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    favorites.includes(track.id)
+                      ? 'Remove from favorites'
+                      : 'Add to favorites'
+                  }
+                  accessibilityState={{
+                    selected: favorites.includes(track.id),
+                  }}
+                  onPress={() =>
+                    useLibraryStore.getState().toggleFavorite(track.id)
+                  }
+                  style={local.action}
+                >
+                  <Icon
+                    name="heart"
+                    color={accent}
+                    filled={favorites.includes(track.id)}
+                    size={28}
+                  />
+                </Pressable>
+              </View>
+              <SeekBar
+                key={track.id}
+                position={loaded ? player.status.position : 0}
+                duration={duration}
+                disabled={player.busy || !loaded}
+                onSeek={player.seek}
+                onDraggingChange={ignoreDrag}
+              />
+              <View style={[local.controls, compact && local.compactControls]}>
+                <TransportButton
+                  kind="previous"
+                  label="Previous track"
+                  disabled={player.busy || !loaded || index <= 0}
+                  onPress={() => player.command('previous')}
+                />
+                <TransportButton
+                  primary
+                  compact={compact}
+                  kind={player.status.playing ? 'pause' : 'play'}
+                  label={player.status.playing ? 'Pause' : 'Play'}
+                  disabled={player.busy}
+                  onPress={() =>
+                    player.command(player.status.playing ? 'pause' : 'play')
+                  }
+                />
+                <TransportButton
+                  kind="next"
+                  label="Next track"
+                  disabled={
+                    player.busy || !loaded || index >= player.queue.length - 1
+                  }
+                  onPress={() => player.command('next')}
+                />
+              </View>
+              <View style={local.bottom}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Back fifteen seconds"
+                  disabled={!loaded || player.busy}
+                  onPress={() =>
+                    player.seek(Math.max(0, player.status.position - 15))
+                  }
+                  style={local.action}
+                >
+                  <Text style={local.secondary}>−15s</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open lyrics"
+                  onPress={() => setLyrics(true)}
+                  style={local.action}
+                >
+                  <Icon name="lyrics" />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="View playback queue"
+                  onPress={() => navigation.navigate('Queue')}
+                  style={local.action}
+                >
+                  <Icon name="list" />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Forward fifteen seconds"
+                  disabled={!loaded || player.busy}
+                  onPress={() =>
+                    player.seek(Math.min(duration, player.status.position + 15))
+                  }
+                  style={local.action}
+                >
+                  <Text style={local.secondary}>+15s</Text>
+                </Pressable>
+              </View>
+              {!!(player.error || player.status.error || favoriteError) && (
+                <Text
+                  accessibilityRole="alert"
+                  numberOfLines={1}
+                  style={local.error}
+                >
+                  {player.error || player.status.error || favoriteError}
+                </Text>
+              )}
             </View>
-            <Text style={local.queueIcon}>≡</Text>
-          </Pressable>
-        </>
-      ) : (
-        <Text style={styles.heading}>Choose a song from your collection.</Text>
-      )}
-      {!!(player.error || player.status.error) && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {player.error || player.status.error}
-        </Text>
-      )}
-    </ScrollView>
+            {lyrics && (
+              <LyricsPanel
+                key={track.id}
+                trackId={track.id}
+                title={track.title}
+                position={loaded ? player.status.position : 0}
+                onClose={() => setLyrics(false)}
+              />
+            )}
+          </>
+        ) : (
+          <Text style={[local.title, compact && local.compactTitle]}>
+            Choose a song from your collection.
+          </Text>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 const local = StyleSheet.create({
-  content: {
-    paddingHorizontal: 28,
-    paddingBottom: 36,
-    width: '100%',
-    maxWidth: 560,
-    alignSelf: 'center',
-  },
-  topline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  metadata: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 12,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: theme.lightFont,
-    color: '#FFFFFF',
-    lineHeight: 36,
-  },
-  artist: {
-    color: theme.colors.accent,
-    fontSize: 18,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  favorite: {
-    width: 48,
-    height: 48,
+  compactTitle: { fontSize: 22 },
+  compactMetadata: { minHeight: 52 },
+  compactControls: { marginVertical: 4 },
+  root: { flex: 1, backgroundColor: '#000000' },
+  body: { flex: 1, paddingHorizontal: 24 },
+  landscape: { flexDirection: 'row', gap: 24 },
+  artSpace: {
+    flex: 1,
+    minHeight: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  heart: { fontSize: 30, color: theme.colors.accent },
+  artLandscape: { flex: 0.8 },
+  dock: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingBottom: 4 },
+  landscapeDock: { flex: 1, width: undefined },
+  flex: { flex: 1, minWidth: 0 },
+  metadata: { flexDirection: 'row', alignItems: 'center', minHeight: 66 },
+  title: { fontSize: 27, fontFamily: theme.lightFont, color: '#FFFFFF' },
+  artist: { fontSize: 16, marginTop: 4 },
   controls: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 28,
-    marginTop: 28,
-    marginBottom: 12,
+    justifyContent: 'space-evenly',
+    marginVertical: 8,
   },
-  secondary: {
+  bottom: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    alignItems: 'center',
   },
-  smallButton: {
-    minWidth: 52,
+  action: {
+    minWidth: 48,
     minHeight: 48,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  localLabel: {
-    fontSize: 9,
-    letterSpacing: 1.2,
-    color: '#718187',
-    flexShrink: 1,
-    textAlign: 'center',
-  },
-  upNext: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    borderTopWidth: 1,
-    borderColor: '#24343A',
-    paddingTop: 22,
-  },
-  queueIcon: { fontSize: 30, color: theme.colors.accent },
-  pressed: { opacity: 0.6 },
+  secondary: { color: '#AAAAAA', fontSize: 14 },
+  error: { fontSize: 12, color: '#FFBCAB' },
 });

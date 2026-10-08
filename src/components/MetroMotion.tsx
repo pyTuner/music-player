@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  useWindowDimensions,
   Animated,
   Easing,
   StyleSheet,
@@ -96,6 +97,7 @@ export function MetroHeader({
   back,
 }: NativeStackHeaderProps) {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   return (
     <View style={[local.header, { paddingTop: insets.top }]}>
       <View style={local.top}>
@@ -111,7 +113,7 @@ export function MetroHeader({
         )}
         <Text style={local.brand}>MUSIC</Text>
       </View>
-      <SlideHeading title={options.title ?? 'music'} />
+      {height > width && <SlideHeading title={options.title ?? 'music'} />}
     </View>
   );
 }

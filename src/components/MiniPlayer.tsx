@@ -1,12 +1,14 @@
+import { useThemedStyles } from '../theme/useThemedStyles';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import MarqueeTitle from './MarqueeTitle';
 import { Artwork } from './MusicElements';
 import TransportButton from './TransportButton';
 import { usePlayerStore } from '../store/playerStore';
-import { styles } from '../theme/styles';
+import { styles as baseStyles } from '../theme/styles';
 
 export default function MiniPlayer({ onOpen }: { onOpen: () => void }) {
+  const styles = useThemedStyles(baseStyles);
   const player = usePlayerStore();
   const track = player.queue.find(item => item.id === player.status.trackId);
   return (
