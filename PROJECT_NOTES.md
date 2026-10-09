@@ -46,3 +46,10 @@
 - Now Playing has native Android shuffle and a repeat cycle: off → queue → one → off. Highlight active modes with the chosen accent; repeat-one uses its own SVG icon.
 - Media3 owns playback order/repetition, including background playback. PlaybackService persists mode changes locally. Queue ordering remains editable; shuffle changes traversal, not the displayed sequence.
 - Large cover initials use bold, tall condensed uppercase lettering; small library initials retain their existing typography.
+
+## Native crossfade — 2026-10-09
+
+- First transition phase is implemented for Android. Settings → transitions offers off (default), 2, 4, 6, 8, and 12 seconds; the native service persists the choice.
+- CrossfadeEngine preloads a second ExoPlayer and overlaps automatic song changes. MediaSession follows the incoming song at fade start without restarting it at fade completion. Now Playing shows “mixing” during overlap.
+- One audio-focus owner controls both decks. Pause/focus loss/headphone-route removal pause both; seek, skip, queue edits, or disabling the feature cancel the tail. Repeat-one bypasses crossfade. Shuffle traversal is copied, not regenerated during handoff.
+- This is native crossfade, not beat matching: see docs/audio-transitions.md for architecture, testing, and the next analysis phase. Continue debug-only builds.

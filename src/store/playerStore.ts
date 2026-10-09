@@ -11,6 +11,7 @@ type PlayerState = {
   error: string;
   setShuffle(enabled: boolean): Promise<void>;
   setRepeatMode(mode: 'off' | 'one' | 'all'): Promise<void>;
+  setCrossfade(seconds: number): Promise<void>;
   restore(): Promise<void>;
   start(track: Track, collection: Track[]): Promise<void>;
   changeQueue(queue: Track[]): Promise<void>;
@@ -57,6 +58,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     try {
       const engine = getAudioEngine();
       await engine.setRepeatMode(mode);
+      set({ status: await engine.getStatus() });
+    } catch (error) {
+      set({ error: String(error) });
+    } finally {
+      set({ busy: false });
+    }
+  },
+  async setCrossfade(seconds) {
+    if (get().busy) return;
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 12) {
+      set({ error: 'Choose a crossfade duration between 0 and 12 seconds.' });
+      return;
+    }
+    set({ busy: true, error: '' });
+    try {
+      const engine = getAudioEngine();
+      await engine.setCrossfade(seconds);
       set({ status: await engine.getStatus() });
     } catch (error) {
       set({ error: String(error) });

@@ -11,6 +11,8 @@ export type PlaybackStatus = {
   shuffle?: boolean;
   repeatMode?: string;
   hasNext?: boolean;
+  crossfadeSeconds?: number;
+  crossfading?: boolean;
 };
 export interface Spec extends TurboModule {
   setQueue(tracks: QueueSource[], index: number): Promise<void>;
@@ -18,6 +20,7 @@ export interface Spec extends TurboModule {
   reorderQueue(ids: string[]): Promise<void>;
   setShuffle(enabled: boolean): Promise<void>;
   setRepeatMode(mode: string): Promise<void>;
+  setCrossfade(seconds: number): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
   seek(seconds: number): Promise<void>;

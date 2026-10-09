@@ -100,7 +100,9 @@ export default function PlayerScreen({
                         numberOfLines={1}
                         style={[local.artist, { color: accent }]}
                       >
-                        {track.artist}
+                        {player.status.crossfading
+                          ? `mixing · ${track.artist}`
+                          : track.artist}
                       </Text>
                     </View>
                     <Pressable

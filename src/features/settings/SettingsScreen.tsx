@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { TextButton } from '../../components/MusicElements';
 import { useLibraryStore } from '../../store/libraryStore';
+import { usePlayerStore } from '../../store/playerStore';
 import { styles as baseStyles } from '../../theme/styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,6 +20,9 @@ export default function SettingsScreen() {
   const styles = useThemedStyles(baseStyles);
   const preferences = usePreferences();
   const library = useLibraryStore();
+  const crossfade = usePlayerStore(state => state.status.crossfadeSeconds ?? 0);
+  const playbackBusy = usePlayerStore(state => state.busy);
+  const playbackError = usePlayerStore(state => state.error);
   return (
     <SafeAreaView edges={['bottom']} style={styles.root}>
       <ScrollView style={styles.root} contentContainerStyle={styles.content}>
@@ -63,8 +67,8 @@ export default function SettingsScreen() {
             <View style={styles.flex}>
               <Text style={styles.text}>include recordings</Text>
               <Text style={styles.muted}>
-                Off by default. Show all device audio if a song is missing. Files
-                you explicitly import are always included.
+                Off by default. Show all device audio if a song is missing.
+                Files you explicitly import are always included.
               </Text>
             </View>
             <Switch
@@ -72,7 +76,10 @@ export default function SettingsScreen() {
               disabled={library.busy}
               value={library.includeRecordings}
               onValueChange={library.setIncludeRecordings}
-              trackColor={{ false: '#333333', true: accents[preferences.accent] }}
+              trackColor={{
+                false: '#333333',
+                true: accents[preferences.accent],
+              }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -101,9 +108,53 @@ export default function SettingsScreen() {
           account or server is required.
         </Text>
         <Text style={styles.heading}>transitions</Text>
+        <Text style={styles.text}>crossfade</Text>
         <Text style={styles.muted}>
-          Standard queued playback is available. Beat matching, waveform analysis,
-          bass swapping, and the Transition Lab are still under development.
+          Blend the end of a song into the next. Short songs use a shorter fade.
+          Repeat one keeps looping the same song without a crossfade.
+        </Text>
+        <View style={styles.row} accessibilityRole="radiogroup">
+          {[0, 2, 4, 6, 8, 12].map(seconds => (
+            <Pressable
+              key={seconds}
+              accessibilityRole="radio"
+              accessibilityLabel={
+                seconds === 0 ? 'Crossfade off' : `Crossfade ${seconds} seconds`
+              }
+              accessibilityState={{
+                checked: crossfade === seconds,
+                disabled: playbackBusy,
+              }}
+              disabled={playbackBusy}
+              onPress={() => usePlayerStore.getState().setCrossfade(seconds)}
+              style={[
+                local.duration,
+                crossfade === seconds && {
+                  borderColor: accents[preferences.accent],
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.text,
+                  crossfade === seconds && {
+                    color: accents[preferences.accent],
+                  },
+                ]}
+              >
+                {seconds === 0 ? 'off' : `${seconds}s`}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {!!playbackError && (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {playbackError}
+          </Text>
+        )}
+        <Text style={styles.muted}>
+          Beat matching and automatic transition-point selection are coming
+          later.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -111,6 +162,15 @@ export default function SettingsScreen() {
 }
 
 const local = StyleSheet.create({
+  duration: {
+    minWidth: 48,
+    minHeight: 48,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#444444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   swatch: {
     width: 88,
     minHeight: 64,

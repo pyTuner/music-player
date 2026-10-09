@@ -27,6 +27,7 @@ const engine = {
   setQueue: jest.fn(),
   setShuffle: jest.fn(),
   setRepeatMode: jest.fn(),
+  setCrossfade: jest.fn(),
   reorderQueue: jest.fn(),
   removeQueueItem: jest.fn(),
   play: jest.fn(),
@@ -36,6 +37,28 @@ const engine = {
   seek: jest.fn(),
   getStatus: jest.fn(),
 };
+
+test('crossfade settings are confirmed natively without restarting playback', async () => {
+  engine.getStatus.mockResolvedValue({ ...status, crossfadeSeconds: 6 });
+  await usePlayerStore.getState().setCrossfade(6);
+  expect(engine.setCrossfade).toHaveBeenCalledWith(6);
+  expect(usePlayerStore.getState().status.crossfadeSeconds).toBe(6);
+  expect(engine.setQueue).not.toHaveBeenCalled();
+  expect(engine.seek).not.toHaveBeenCalled();
+});
+test('invalid crossfade values do not reach the native engine', async () => {
+  await usePlayerStore.getState().setCrossfade(13);
+  expect(engine.setCrossfade).not.toHaveBeenCalled();
+  expect(usePlayerStore.getState().error).toContain('between 0 and 12');
+});
+test('failed crossfade settings keep the previous confirmed duration', async () => {
+  usePlayerStore.setState({ status: { ...status, crossfadeSeconds: 4 } });
+  engine.setCrossfade.mockRejectedValue(new Error('Unavailable'));
+  await usePlayerStore.getState().setCrossfade(8);
+  expect(usePlayerStore.getState().status.crossfadeSeconds).toBe(4);
+  expect(usePlayerStore.getState().busy).toBe(false);
+  expect(usePlayerStore.getState().error).toContain('Unavailable');
+});
 beforeEach(() => {
   jest.resetAllMocks();
   jest.mocked(getAudioEngine).mockReturnValue(engine);
