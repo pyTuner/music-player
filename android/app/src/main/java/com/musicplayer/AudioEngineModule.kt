@@ -78,6 +78,16 @@ class AudioEngineModule(private val context: ReactApplicationContext) : NativeAu
     null
   }
   override fun play(promise: Promise) = withPlayer(promise) { it.play(); null }
+  override fun setCrossfade(seconds: Double, promise: Promise) {
+    main.post {
+      try {
+        require(seconds.isFinite() && seconds == seconds.toInt().toDouble() && seconds in 0.0..CrossfadePolicy.MAX_SECONDS.toDouble()) { "Crossfade must be between 0 and 12 seconds." }
+        context.getSharedPreferences("transitions", android.content.Context.MODE_PRIVATE)
+          .edit().putInt("crossfadeSeconds", seconds.toInt()).apply()
+        promise.resolve(null)
+      } catch (error: Exception) { promise.reject("CROSSFADE_FAILED", error.message, error) }
+    }
+  }
   override fun pause(promise: Promise) = withPlayer(promise) { it.pause(); null }
   override fun next(promise: Promise) = withPlayer(promise) { it.seekToNextMediaItem(); null }
   override fun previous(promise: Promise) = withPlayer(promise) { player ->
@@ -100,6 +110,8 @@ class AudioEngineModule(private val context: ReactApplicationContext) : NativeAu
         else -> "off"
       })
       putBoolean("hasNext", player.hasNextMediaItem())
+      putInt("crossfadeSeconds", context.getSharedPreferences("transitions", android.content.Context.MODE_PRIVATE).getInt("crossfadeSeconds", 0))
+      putBoolean("crossfading", player.sessionExtras.getBoolean("crossfading", false))
       putDouble("position", player.currentPosition.coerceAtLeast(0).toDouble() / 1000)
       putDouble("duration", player.duration.coerceAtLeast(0).toDouble() / 1000)
       putString("error", player.playerError?.message ?: "")
