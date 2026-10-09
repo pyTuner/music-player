@@ -53,3 +53,4 @@
 - CrossfadeEngine preloads a second ExoPlayer and overlaps automatic song changes. MediaSession follows the incoming song at fade start without restarting it at fade completion. Now Playing shows “mixing” during overlap.
 - One audio-focus owner controls both decks. Pause/focus loss/headphone-route removal pause both; seek, skip, queue edits, or disabling the feature cancel the tail. Repeat-one bypasses crossfade. Shuffle traversal is copied, not regenerated during handoff.
 - This is native crossfade, not beat matching: see docs/audio-transitions.md for architecture, testing, and the next analysis phase. Continue debug-only builds.
+- Crossfade refinement: equal-power fades with steady 3 dB mode headroom replace the earlier midpoint-dipping complementary curve. Late preparation falls back to normal queue progression; an early outgoing end no longer jumps B's gain. Silent intros/outros and unequal song loudness still need phase-two analysis.

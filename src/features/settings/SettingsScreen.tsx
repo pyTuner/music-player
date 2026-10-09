@@ -113,6 +113,10 @@ export default function SettingsScreen() {
           Blend the end of a song into the next. Short songs use a shorter fade.
           Repeat one keeps looping the same song without a crossfade.
         </Text>
+        <Text style={styles.muted}>
+          Crossfade plays slightly quieter to leave room for both songs without
+          distortion.
+        </Text>
         <View style={styles.row} accessibilityRole="radiogroup">
           {[0, 2, 4, 6, 8, 12].map(seconds => (
             <Pressable

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaController
 import androidx.test.platform.app.InstrumentationRegistry
@@ -87,19 +88,20 @@ class CrossfadeEngineTest {
     await("Next deck did not crossfade") { engine.isCrossfading }
     return outgoing
   }
-  @Test fun handoffKeepsIncomingPositionAndComplementaryVolumes() {
+  @Test fun handoffKeepsIncomingPositionAndEqualPowerVolumes() {
     val tail = overlap()
     await("Incoming deck did not progress") { engine.player.currentPosition > 500 }
     main {
       assertEquals("test-1", engine.player.currentMediaItem?.mediaId)
       assertTrue(tail.isPlaying)
-      assertEquals(1f, tail.volume + engine.player.volume, 0.01f)
+      val expectedPower = CrossfadePolicy.MIX_HEADROOM * CrossfadePolicy.MIX_HEADROOM
+      assertEquals(expectedPower, tail.volume * tail.volume + engine.player.volume * engine.player.volume, 0.01f)
     }
     await("Fade did not complete") { !engine.isCrossfading }
     main {
       assertEquals("test-1", engine.player.currentMediaItem?.mediaId)
       assertTrue(engine.player.currentPosition >= 3500)
-      assertEquals(1f, engine.player.volume, 0.001f)
+      assertEquals(CrossfadePolicy.MIX_HEADROOM, engine.player.volume, 0.001f)
     }
   }
   @Test fun pauseFreezesBothDecksAndResumeContinuesTheFade() {
@@ -123,10 +125,10 @@ class CrossfadeEngineTest {
   @Test fun seekSkipAndQueueClearCancelTheOldDeck() {
     overlap()
     main { engine.player.seekTo(1000) }
-    await("Seek left a tail playing") { !engine.isCrossfading && engine.player.volume == 1f }
+    await("Seek left a tail playing") { !engine.isCrossfading && engine.player.volume == CrossfadePolicy.MIX_HEADROOM }
     overlap()
     main { engine.player.seekToNextMediaItem() }
-    await("Skip left a tail playing") { !engine.isCrossfading && engine.player.volume == 1f }
+    await("Skip left a tail playing") { !engine.isCrossfading && engine.player.volume == CrossfadePolicy.MIX_HEADROOM }
     main { engine.player.setMediaItems(tracks, 0, 3300); engine.player.prepare(); engine.player.play() }
     await("Queue reset did not fade") { engine.isCrossfading }
     main { engine.player.clearMediaItems() }
@@ -196,7 +198,31 @@ class CrossfadeEngineTest {
     main {
       assertFalse(engine.isCrossfading)
       assertEquals("test-0", engine.player.currentMediaItem?.mediaId)
-      assertEquals(1f, engine.player.volume, 0.001f)
+      assertEquals(CrossfadePolicy.MIX_HEADROOM, engine.player.volume, 0.001f)
     }
+  }
+  @Test fun lateReadinessDoesNotTurnFourSecondsIntoOneSecond() {
+    main { engine.player.seekTo(6900) }
+    Thread.sleep(400)
+    main {
+      assertFalse(engine.isCrossfading)
+      assertEquals("test-0", engine.player.currentMediaItem?.mediaId)
+    }
+    await("Late start did not fall back to normal queue advancement") {
+      engine.player.currentMediaItem?.mediaId == "test-1"
+    }
+    main { assertFalse(engine.isCrossfading) }
+  }
+  @Test fun earlyTailEndDoesNotJumpIncomingSongToFullGain() {
+    val tail = overlap()
+    await("Incoming deck did not advance") { engine.player.currentPosition > 250 }
+    main { (tail as ForwardingPlayer).wrappedPlayer.clearMediaItems() }
+    Thread.sleep(200)
+    main {
+      assertTrue("Envelope should continue after the tail ends", engine.isCrossfading)
+      assertTrue("Incoming gain jumped instead of continuing the fade", engine.player.volume < CrossfadePolicy.MIX_HEADROOM * 0.7f)
+    }
+    await("Envelope never finished") { !engine.isCrossfading }
+    main { assertEquals(CrossfadePolicy.MIX_HEADROOM, engine.player.volume, 0.001f) }
   }
 }

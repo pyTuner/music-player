@@ -34,7 +34,8 @@ internal class CrossfadeEngine(
   private var previousProgress = 0.0
   var seconds = settings.getInt("crossfadeSeconds", 0).coerceIn(0, CrossfadePolicy.MAX_SECONDS)
     private set
-  val isCrossfading: Boolean get() = outgoing != null
+  val isCrossfading: Boolean get() = fadeDuration > 0
+  private val outputGain: Float get() = CrossfadePolicy.outputGain(seconds > 0)
   var player: Player = controls(active)
     private set
 
@@ -82,6 +83,7 @@ internal class CrossfadeEngine(
     if (key == "crossfadeSeconds") {
       seconds = settings.getInt(key, 0).coerceIn(0, CrossfadePolicy.MAX_SECONDS)
       cancelOverlap(); discardStandby(); failedCandidate = null
+      active.volume = outputGain
     }
   }
   private val tick = object : Runnable {
@@ -92,6 +94,7 @@ internal class CrossfadeEngine(
     }
   }
   init {
+    active.volume = outputGain
     active.shuffleModeEnabled = modes.getBoolean("shuffle", false)
     active.repeatMode = modes.getInt("repeat", Player.REPEAT_MODE_OFF).coerceIn(0, 2)
     active.addListener(listener)
@@ -139,18 +142,23 @@ internal class CrossfadeEngine(
 
   private fun update() {
     val tail = outgoing
-    if (tail != null) {
+    if (isCrossfading) {
       synchronizeTail()
       if (!active.isPlaying) return
       // Progress follows decoded playback, so a pause/buffer wait freezes the envelope.
       val p = ((active.currentPosition - fadeStart).toDouble() / fadeDuration).coerceIn(previousProgress, 1.0)
       previousProgress = p
-      if (p >= 1 || tail.playbackState == Player.STATE_ENDED || tail.playerError != null) {
+      if (p >= 1) {
         cancelOverlap()
       } else {
+        // If the tail ends/fails early, continue B's ramp instead of jumping it to full gain.
+        if (tail != null && (tail.playbackState == Player.STATE_ENDED || tail.playerError != null)) {
+          outgoing = null
+          tail.release()
+        }
         val gains = CrossfadePolicy.gains(p)
-        tail.volume = gains.first
-        active.volume = gains.second
+        outgoing?.volume = gains.first * outputGain
+        active.volume = gains.second * outputGain
       }
       return
     }
@@ -170,7 +178,7 @@ internal class CrossfadeEngine(
     if (prepared.playbackState != Player.STATE_READY) return
     val duration = CrossfadePolicy.durationMs(seconds, active.duration, prepared.duration)
     // Too late to overlap cleanly? Leave the existing queue to advance normally.
-    if (duration == 0L || remaining > duration || remaining < 750) return
+    if (!CrossfadePolicy.canStart(remaining, duration)) return
     beginOverlap(prepared, remaining.coerceAtMost(duration))
   }
   private fun preload(next: Int) {
@@ -217,10 +225,12 @@ internal class CrossfadeEngine(
     onTransitionChanged(true)
   }
   private fun cancelOverlap() {
-    val tail = outgoing ?: return
+    if (!isCrossfading) return
+    val tail = outgoing
     outgoing = null
-    tail.release()
-    active.volume = 1f
+    fadeDuration = 0
+    tail?.release()
+    active.volume = outputGain
     previousProgress = 0.0
     onTransitionChanged(false)
   }
